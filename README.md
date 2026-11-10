@@ -8,7 +8,7 @@ Weavers in Iran may need cash as soon as a rug is finished. Finding a buyer can 
 
 Our platform would let **weavers borrow from investors against finished rugs they own**, giving them time to find a better buyer. This fits the challenge’s **Problem Space 1: Access to Fair Financial Assets and Affordable Financing**.
 
-**Status:** This repository currently contains project documentation and agent skills. The features and prototype below are planned; the app and contracts are not yet implemented.
+**Status:** The first successful-sale Soroban contract and local tests are implemented. They cover an 8-token advance and a 15-token sale paying 9 to the lender, 1 to the warehouse, and 5 to the weaver. See [the contract flow, test commands, and frontend call reference](docs/first-loan-flow.md). The web app, testnet deployment, and other features below remain planned.
 
 ## How it works
 
