@@ -19,7 +19,7 @@ Verified against the production build (`npm run build` followed by `npm start`) 
 
 ## Remaining manual verification
 
-**A Freighter-signed purchase has not been completed or verified in the browser.** The in-app browser cannot host Freighter. Chrome navigation could be driven through its native address bar, but Chrome's browser automation failed on DOM inspection and screenshots, so it could not reliably drive or verify the wallet prompts. The user was asked to connect a Testnet Freighter wallet in Chrome. No wallet seed or private key was entered into the page, and the fresh receipt was left unpurchased for that test.
+**A Freighter-signed purchase has not been completed or verified in the browser.** The in-app browser cannot host Freighter. Chrome navigation could be driven through its native address bar, but Chrome's browser automation failed on DOM inspection and screenshots, so it could not reliably drive or verify the wallet prompts. The user confirmed that Freighter is not set up yet. Installing Freighter and creating or unlocking a Testnet wallet are required before the signing test can proceed. No wallet seed or private key was entered into the page, and the fresh receipt was left unpurchased for that test.
 
 To finish:
 
