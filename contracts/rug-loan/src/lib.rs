@@ -40,6 +40,7 @@ pub enum Stage {
 pub struct Receipt {
     pub weaver: Address,
     pub lender: Option<Address>,
+    pub buyer: Option<Address>,
     pub approved_price: Option<i128>,
     pub stage: Stage,
     pub ready_for_pickup: bool,
@@ -98,6 +99,7 @@ impl RugLoan {
             &Receipt {
                 weaver,
                 lender: None,
+                buyer: None,
                 approved_price: None,
                 stage: Stage::Held,
                 ready_for_pickup: false,
@@ -171,6 +173,7 @@ impl RugLoan {
             &(price - LENDER_DUE - CUSTODY_FEE),
         );
         // Any token failure aborts the invocation, rolling back every preceding transfer.
+        receipt.buyer = Some(buyer);
         receipt.stage = Stage::Settled;
         receipt.ready_for_pickup = true;
         save(&env, &id, &receipt);

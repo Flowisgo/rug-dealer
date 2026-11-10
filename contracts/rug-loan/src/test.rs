@@ -23,6 +23,7 @@ fn approved_sale_pays_every_party_and_only_then_unlocks_the_rug() {
     let loan = RugLoanClient::new(&env, &id);
     let receipt = BytesN::from_array(&env, &[1; 32]);
     loan.register_receipt(&receipt, &weaver);
+    assert_eq!(loan.get_receipt(&receipt).buyer, None);
     loan.accept_terms(&receipt, &lender);
     loan.fund_loan(&receipt);
     assert_eq!(token.balance(&weaver), 8 * UNIT);
@@ -38,6 +39,7 @@ fn approved_sale_pays_every_party_and_only_then_unlocks_the_rug() {
     assert_eq!(token.balance(&buyer), 0);
     assert_eq!(token.balance(&id), 0);
     assert!(loan.get_receipt(&receipt).ready_for_pickup);
+    assert_eq!(loan.get_receipt(&receipt).buyer, Some(buyer));
 }
 
 struct Fixture {
@@ -118,6 +120,7 @@ fn underpayment_cannot_use_other_funds_and_leaves_every_balance_and_receipt_unch
     assert_eq!(f.balances(), before);
     assert_eq!(f.loan().get_receipt(&f.receipt), receipt_before);
     assert!(!f.loan().get_receipt(&f.receipt).ready_for_pickup);
+    assert_eq!(f.loan().get_receipt(&f.receipt).buyer, None);
 }
 
 #[test]
@@ -151,6 +154,7 @@ fn a_failed_final_payout_rolls_back_the_buyer_payment_and_both_prior_payouts() {
     token::StellarAssetClient::new(&f.env, &f.token_id).set_authorized(&f.weaver, &false);
     let before = f.balances();
     let receipt_before = f.loan().get_receipt(&f.receipt);
+    assert_eq!(receipt_before.buyer, None);
     assert!(f
         .loan()
         .try_buy(&f.receipt, &f.buyer, &(15 * UNIT))
@@ -158,11 +162,13 @@ fn a_failed_final_payout_rolls_back_the_buyer_payment_and_both_prior_payouts() {
     assert_eq!(f.balances(), before);
     assert_eq!(f.loan().get_receipt(&f.receipt), receipt_before);
     assert!(!f.loan().get_receipt(&f.receipt).ready_for_pickup);
+    assert_eq!(f.loan().get_receipt(&f.receipt).buyer, None);
     // A failed attempt has not consumed the receipt; settlement can be retried.
     token::StellarAssetClient::new(&f.env, &f.token_id).set_authorized(&f.weaver, &true);
     f.loan().buy(&f.receipt, &f.buyer, &(15 * UNIT));
     assert_eq!(f.balances(), [17 * UNIT, UNIT, 13 * UNIT, 15 * UNIT, 0]);
     assert!(f.loan().get_receipt(&f.receipt).ready_for_pickup);
+    assert_eq!(f.loan().get_receipt(&f.receipt).buyer, Some(f.buyer));
 }
 
 #[test]
@@ -172,7 +178,8 @@ fn a_settled_receipt_cannot_charge_the_buyer_again_or_back_another_loan() {
     f.loan().buy(&f.receipt, &f.buyer, &(15 * UNIT));
     let before = f.balances();
     assert_eq!(
-        f.loan().try_buy(&f.receipt, &f.buyer, &(15 * UNIT)),
+        f.loan()
+            .try_buy(&f.receipt, &Address::generate(&f.env), &(15 * UNIT)),
         Err(Ok(Error::WrongStage))
     );
     assert_eq!(
@@ -185,6 +192,7 @@ fn a_settled_receipt_cannot_charge_the_buyer_again_or_back_another_loan() {
     );
     assert_eq!(f.balances(), before);
     assert!(f.loan().get_receipt(&f.receipt).ready_for_pickup);
+    assert_eq!(f.loan().get_receipt(&f.receipt).buyer, Some(f.buyer));
 }
 
 #[test]
