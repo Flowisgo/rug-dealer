@@ -4,7 +4,7 @@ Verified against the production build (`npm run build` followed by `npm start`) 
 
 ## Passed in the in-app browser
 
-- The fresh receipt `a7fda59407b719206fc2afa87afb91069f2370b9629aabcb78e1a5948e9de703` loads with an approved price of **15 test USDC**, stage **Active**, no recorded buyer, and pickup **Locked · awaiting settlement**.
+- Before the Varial purchase, the fresh receipt `a7fda59407b719206fc2afa87afb91069f2370b9629aabcb78e1a5948e9de703` loaded with an approved price of **15 test USDC**, stage **Active**, no recorded buyer, and pickup **Locked · awaiting settlement**. That same receipt is now settled, as verified below.
 - The live `loan_terms` values produce the **9 / 1 / 5** payout breakdown.
 - “Refresh status” reads the receipt again from testnet.
 - “Connect Freighter” in a browser without Freighter returns an actionable wallet-unavailable message and installation link; it does not attempt a purchase.
@@ -17,16 +17,49 @@ Verified against the production build (`npm run build` followed by `npm start`) 
 - `npm run build`: passed.
 - `git diff --check`: passed.
 
-## Remaining manual verification
+## Successful Varial purchase
 
-**A Freighter-signed purchase has not been completed or verified in the browser.** The in-app browser cannot host Freighter. Chrome navigation could be driven through its native address bar, but Chrome's browser automation failed on DOM inspection and screenshots, so it could not reliably drive or verify the wallet prompts. The user confirmed that Freighter is not set up yet. Installing Freighter and creating or unlocking a Testnet wallet are required before the signing test can proceed. No wallet seed or private key was entered into the page, and the fresh receipt was left unpurchased for that test.
+The user completed the buyer-page purchase using Varial on Stellar testnet. The supplied transaction was independently verified through Horizon, including its `buy` invocation, receipt ID, payment amount, and all four USDC transfers. A subsequent `get_receipt` read verified the settled state and recorded buyer.
 
-To finish:
+- [Confirmed purchase transaction](https://stellar.expert/explorer/testnet/tx/b87174f435d428a6b9911deb12eafe1fb3361e9c578f8645d15377a0ba558fba): `b87174f435d428a6b9911deb12eafe1fb3361e9c578f8645d15377a0ba558fba`.
+- Result: **successful**, ledger **5666446**.
+- Confirmed at **2026-11-10 19:11:13 America/Toronto** (`2026-11-11T00:11:13Z`).
+- Contract: `CCRIC7GAMNO3MADK5VIDG7PB7XCJBGMJDC2PNPCMBC5CW6SJU66T6YEF`.
+- Receipt: `a7fda59407b719206fc2afa87afb91069f2370b9629aabcb78e1a5948e9de703`.
+- Buyer and transaction source: `GDXBJBPK3LCGTYSRBGWZ2M33PMYZKIMZM74QRV3QINOK76XFLRSDOEEQ`.
+- Approved price and purchase payment: **15 test USDC** (`150000000` smallest units).
+- Asset: Circle testnet USDC, issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`.
 
-1. Run the app and open http://127.0.0.1:3000 in Chrome with Freighter.
-2. Connect the buyer wallet on Testnet. It needs a Circle testnet USDC trustline, at least **15 test USDC**, and test XLM for fees. The prepared CLI demo buyer has 15 test USDC, but those CLI keys are not automatically available to Freighter.
-3. Review the on-chain price, click **Review & pay 15 test USDC**, and approve the transaction in Freighter.
-4. Verify the page first shows pending, then a confirmed transaction link. After its receipt refresh, verify that the recorded buyer matches the signing wallet and pickup is **Ready for pickup**.
-5. Reload and verify the receipt and transaction link persist and another purchase is unavailable. Record the transaction hash and before/after balances: buyer −15, lender +9, warehouse +1, weaver +5 test USDC.
+### Verified payouts
 
-This limitation is distinct from the CLI testnet settlement already completed for PR #3. The earlier CLI transaction is not evidence that Freighter signing or the frontend submission path has passed.
+The successful transaction records 15 USDC transferred from the buyer to the contract, followed by these three payouts. These figures are changes from this sale, not the parties' total balances.
+
+| Party | Wallet | USDC change in this sale |
+| --- | --- | ---: |
+| Buyer | `GDXBJBPK3LCGTYSRBGWZ2M33PMYZKIMZM74QRV3QINOK76XFLRSDOEEQ` | **−15** |
+| Lender | `GADYJDZI3EH4YP5QYHRVGWQC444S6Q2WKFT23LPTXFHZHW4GFKP3DR3G` | **+9** |
+| Warehouse | `GALBTMOQLGDYANDGXIHXGZHLALE3C3BYO43C3NYORGWRR34PL44465DQ` | **+1** |
+| Weaver | `GBXT6F6GJHLFL2LL72K7EZLCSFKLYJ7TLAIXCOGICVMSHOIKKWZOIIVA` | **+5** |
+
+The contract's net USDC change from settlement is **0**. Test XLM network fees are separate.
+
+### Verified final receipt
+
+Reading `get_receipt` from the deployed contract after confirmation returned:
+
+```json
+{
+  "approved_price": "150000000",
+  "buyer": "GDXBJBPK3LCGTYSRBGWZ2M33PMYZKIMZM74QRV3QINOK76XFLRSDOEEQ",
+  "lender": "GADYJDZI3EH4YP5QYHRVGWQC444S6Q2WKFT23LPTXFHZHW4GFKP3DR3G",
+  "ready_for_pickup": true,
+  "stage": "Settled",
+  "weaver": "GBXT6F6GJHLFL2LL72K7EZLCSFKLYJ7TLAIXCOGICVMSHOIKKWZOIIVA"
+}
+```
+
+The receipt records the actual Varial buyer and clears the rug for pickup. The default fixture is now consumed; another purchase test requires a newly registered, funded, and sale-approved receipt.
+
+### Verification boundary
+
+Wallet interaction was performed by the user in Varial; transaction success, exact payouts, and the final receipt were independently checked on-chain. This purchase is separate from the earlier CLI settlement for PR #3. The transient pending/confirmation UI and transaction-link persistence after reload were not independently rechecked during this report update.
