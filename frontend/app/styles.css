@@ -539,3 +539,150 @@ footer > span:last-child {
   margin-left: 8px;
   padding: 0;
 }
+.role-nav {
+  display: flex;
+  gap: 30px;
+  max-width: 1224px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.role-nav a {
+  text-decoration: none;
+  padding: 4px 0;
+}
+.role-nav a[aria-current="page"] {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+.receipt-library {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 28px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.receipt-library select {
+  flex: 1;
+  min-width: 200px;
+  padding: 11px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+}
+.receipt-library span {
+  font-size: 10px;
+}
+.role-form {
+  margin: 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.role-form h2,
+.terms-summary h2 {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  margin: 14px 0 2px;
+}
+.role-form p,
+.terms-summary p,
+.wallet-controls p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.role-form label {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.role-form input,
+.role-form textarea {
+  width: 100%;
+  min-width: 0;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  padding: 10px;
+  font: inherit;
+  color: var(--ink);
+}
+.role-form textarea {
+  min-height: 65px;
+}
+.terms-summary {
+  margin: 22px 0;
+}
+.wallet-controls {
+  padding: 7px 0 17px;
+  border-bottom: 1px solid var(--line);
+}
+.wallet-controls .address {
+  font-size: 10px;
+}
+.overdue {
+  border-color: #d6b39a;
+  background: #f3e7dc;
+}
+.transaction code {
+  overflow-wrap: anywhere;
+}
+.role-form .primary {
+  margin-top: 8px;
+}
+.purchase-panel h1 {
+  font-size: 48px;
+}
+.role-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.role-form .signing-note {
+  text-align: left;
+}
+@media (max-width: 1320px) {
+  .role-nav {
+    margin-left: 48px;
+    margin-right: 48px;
+  }
+}
+@media (max-width: 800px) {
+  .role-nav {
+    margin-left: 22px;
+    margin-right: 22px;
+    gap: 18px;
+    font-size: 11px;
+  }
+  .purchase-panel h1 {
+    font-size: 44px;
+  }
+  .receipt-library {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .terms-summary dl > div {
+    gap: 8px;
+  }
+}
+.hero {
+  align-items: start;
+}
+.rug-panel {
+  position: sticky;
+  top: 24px;
+}
+@media (max-width: 800px) {
+  .rug-panel {
+    position: relative;
+    top: 0;
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "contract": "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+  "runs": [
+    {
+      "receipt_id": "9b2ee2c82048f41305899373e01a3af6f6ad12aa46ee9c4d5eadeff53508536a",
+      "stage": "TermsAccepted",
+      "checks": [
+        {
+          "method": "register_receipt",
+          "source": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "accept_fallback",
+          "source": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        }
+      ]
+    },
+    {
+      "receipt_id": "4f985b249590bdb68aa3a4c1d57a17343ecf44799ebb0dc8eb896883558f51cd",
+      "stage": "Held",
+      "checks": [
+        {
+          "method": "register_receipt",
+          "source": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "accept_terms",
+          "source": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        }
+      ]
+    },
+    {
+      "receipt_id": "9b2ee2c82048f41305899373e01a3af6f6ad12aa46ee9c4d5eadeff53508536a",
+      "stage": "TermsAccepted",
+      "checks": [
+        {
+          "method": "register_receipt",
+          "source": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "fund_loan",
+          "source": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        }
+      ]
+    },
+    {
+      "receipt_id": "9b2ee2c82048f41305899373e01a3af6f6ad12aa46ee9c4d5eadeff53508536a",
+      "stage": "Active",
+      "checks": [
+        {
+          "method": "register_receipt",
+          "source": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "approve_sale",
+          "source": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "repay",
+          "source": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "buy",
+          "source": "GAZEYVQKTXGU7XCSY7W6T2YJ4TUN2ZEACLC3QJI3FPQLCOW3WZKUAN3D",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        }
+      ]
+    },
+    {
+      "receipt_id": "9b2ee2c82048f41305899373e01a3af6f6ad12aa46ee9c4d5eadeff53508536a",
+      "stage": "Overdue",
+      "checks": [
+        {
+          "method": "register_receipt",
+          "source": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "repay",
+          "source": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        },
+        {
+          "method": "dealer_buy",
+          "source": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+          "result": "simulation succeeded; transaction assembled; no signature or submission"
+        }
+      ]
+    }
+  ]
+}

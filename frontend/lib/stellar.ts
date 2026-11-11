@@ -1,9 +1,21 @@
+import { receiptBytes, parseAmount, units } from "./encoding";
+import type { Terms } from "./encoding";
+export type { Terms } from "./encoding";
+export {
+  receiptBytes,
+  parseAmount,
+  units,
+  termsValue,
+  newReceiptId,
+} from "./encoding";
 import {
   Account,
   Address,
+  Asset,
   BASE_FEE,
   Contract,
   Networks,
+  Operation,
   Transaction,
   TransactionBuilder,
   nativeToScVal,
@@ -18,191 +30,311 @@ import {
   requestAccess,
   signTransaction,
 } from "@stellar/freighter-api";
-
-export const CONTRACT =
-  "CCRIC7GAMNO3MADK5VIDG7PB7XCJBGMJDC2PNPCMBC5CW6SJU66T6YEF";
-export const USDC = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+import deployment from "../demo/deployment.json" with { type: "json" };
+export { deployment };
+export const CONTRACT = deployment.contract;
+export const USDC = deployment.usdc;
 export const DEMO_RECEIPT =
-  "a7fda59407b719206fc2afa87afb91069f2370b9629aabcb78e1a5948e9de703";
-const READER = "GALBTMOQLGDYANDGXIHXGZHLALE3C3BYO43C3NYORGWRR34PL44465DQ";
-const server = new rpc.Server("https://soroban-testnet.stellar.org");
-const hex = (bytes: Uint8Array) =>
-  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-export const txLink = (hash: string) =>
-  `https://stellar.expert/explorer/testnet/tx/${hash}`;
-export const storageKey = (receipt: string) =>
-  `${CONTRACT}:${receipt}:purchase`;
+  (deployment.receipts as { id: string }[])[0]?.id || "";
+export const ROLES = [
+  "warehouse",
+  "weaver",
+  "dealer",
+  "lender",
+  "buyer",
+] as const;
+export type Role = (typeof ROLES)[number];
+export type Defaults = Omit<Terms, "lender" | "dealer">;
 export type Receipt = {
   weaver: string;
-  lender: string | null;
+  terms: Terms | null;
+  dealer_committed: boolean;
   buyer: string | null;
+  pickup_recipient: string | null;
   approved_price: bigint | null;
+  funded_at: bigint | null;
+  deadline: bigint | null;
   stage: string;
   ready_for_pickup: boolean;
 };
-export type Terms = {
-  advance: bigint;
-  lender_due: bigint;
-  custody_fee: bigint;
-};
-export type Purchase = {
+export type ActionRecord = {
   hash: string;
-  status: "pending" | "confirmed" | "failed";
+  action: string;
+  status: "pending" | "confirmed" | "failed" | "expired";
+  validUntil: number;
 };
-export const units = (value: bigint) => {
-  const whole = value / 10_000_000n;
-  const fraction = (value % 10_000_000n)
-    .toString()
-    .padStart(7, "0")
-    .replace(/0+$/, "");
-  return `${whole.toLocaleString("en-US")}${fraction ? `.${fraction}` : ""}`;
+export type RugMeta = {
+  id: string;
+  name: string;
+  description: string;
+  scenario?: string;
 };
-export function receiptBytes(id: string) {
-  if (!/^[0-9a-f]{64}$/i.test(id))
-    throw new Error("Use a receipt ID with exactly 64 hexadecimal characters.");
-  return nativeToScVal(
-    Uint8Array.from(id.match(/../g)!.map((byte) => parseInt(byte, 16))),
-    { type: "bytes" },
-  );
+const server = new rpc.Server("https://soroban-testnet.stellar.org");
+const hex = (v: Uint8Array) =>
+  Array.from(v, (b) => b.toString(16).padStart(2, "0")).join("");
+export const txLink = (hash: string) =>
+  `https://stellar.expert/explorer/testnet/tx/${hash}`;
+export const storageKey = (id: string) => `${CONTRACT}:${id}:full-demo-action`;
+export const registryKey = `${CONTRACT}:rug-metadata`;
+const businessErrors: Record<string, string> = {
+  "1": "This receipt already exists. Use its existing record or generate a new ID.",
+  "2": "Receipt not found in this deployment. Register it or load another receipt.",
+  "3": "This action is unavailable at the current loan stage. Refresh the receipt.",
+  "4": "The weaver must approve a sale price first.",
+  "5": "The amounts must be valid and cover lender repayment plus custody.",
+  "6": "The dealer must accept the exact weaver-approved terms.",
+  "7": "The deadline has arrived. Use repayment or the committed dealer purchase.",
+  "8": "Dealer purchase is available only after the ledger deadline.",
+  "9": "The nominated dealer must accept the fallback commitment before funding.",
+  "10": "Choose a loan duration from 30 seconds to one day.",
+};
+function simulationMessage(error: string) {
+  const code = error.match(/Contract,\s*#?(\d+)/)?.[1];
+  return code && businessErrors[code]
+    ? businessErrors[code]
+    : "The contract rejected this action. Refresh the receipt and check the signing wallet, terms, balance, and trustline.";
 }
-async function view(contract: string, method: string, args: xdr.ScVal[] = []) {
-  const tx = new TransactionBuilder(new Account(READER, "0"), {
-    fee: BASE_FEE,
-    networkPassphrase: Networks.TESTNET,
-  })
+async function view(
+  method: string,
+  args: xdr.ScVal[] = [],
+  contract = CONTRACT,
+) {
+  if (!contract)
+    throw new Error("The full-demo deployment is not configured yet.");
+  const tx = new TransactionBuilder(
+    new Account(deployment.accounts.warehouse, "0"),
+    { fee: BASE_FEE, networkPassphrase: Networks.TESTNET },
+  )
     .addOperation(new Contract(contract).call(method, ...args))
     .setTimeout(60)
     .build();
-  const result = await server.simulateTransaction(tx);
-  if (!rpc.Api.isSimulationSuccess(result) || !result.result)
-    throw new Error(
-      "Could not read this receipt on Stellar testnet. Check the receipt ID and try again.",
-    );
-  return scValToNative(result.result.retval);
+  const sim = await server.simulateTransaction(tx);
+  if (!rpc.Api.isSimulationSuccess(sim) || !sim.result)
+    throw new Error(simulationMessage("error" in sim ? String(sim.error) : ""));
+  return scValToNative(sim.result.retval);
 }
 export async function readReceipt(id: string): Promise<Receipt> {
-  const value = await view(CONTRACT, "get_receipt", [receiptBytes(id)]);
+  const r = await view("get_receipt", [receiptBytes(id)]);
   return {
-    ...value,
-    stage: Array.isArray(value.stage) ? value.stage[0] : value.stage,
+    ...r,
+    terms:
+      Array.isArray(r.terms) && r.terms[0] === "Accepted" ? r.terms[1] : null,
+    stage: Array.isArray(r.stage) ? r.stage[0] : r.stage,
   };
 }
-export const readTerms = async (): Promise<Terms> =>
-  view(CONTRACT, "loan_terms");
-export const readBalance = async (address: string): Promise<bigint> =>
-  view(USDC, "balance", [new Address(address).toScVal()]);
-export async function verifyWallet(address?: string) {
+export const readDefaults = async (): Promise<Defaults> => view("loan_terms");
+export const ledgerTime = async (): Promise<bigint> => view("ledger_time");
+export async function walletInfo(address: string) {
+  const response = await fetch(
+    `https://horizon-testnet.stellar.org/accounts/${address}`,
+    { cache: "no-store" },
+  );
+  if (response.status === 404)
+    return { funded: false, trustline: false, balance: 0n, xlm: "0" };
+  if (!response.ok)
+    throw new Error("Could not read wallet funding. Try refreshing.");
+  const account = await response.json();
+  const line = account.balances.find(
+    (b: { asset_code?: string; asset_issuer?: string }) =>
+      b.asset_code === "USDC" && b.asset_issuer === deployment.issuer,
+  );
+  return {
+    funded: true,
+    trustline: !!line && line.is_authorized,
+    balance: line ? parseAmount(line.balance) : 0n,
+    xlm: account.balances.find(
+      (b: { asset_type: string }) => b.asset_type === "native",
+    ).balance,
+  };
+}
+export async function verifyWallet(expected?: string) {
   const network = await getNetworkDetails();
   if (network.error) throw new Error(network.error.message);
   if (network.networkPassphrase !== Networks.TESTNET)
     throw new Error(
-      "Switch Freighter to Testnet, then connect again. This page never uses mainnet.",
+      "Switch Varial / Freighter to Testnet, then reconnect. Mainnet is never used.",
     );
-  const current = await getAddress();
-  if (current.error || !current.address)
+  const wallet = await getAddress();
+  if (wallet.error || !wallet.address)
+    throw new Error("Unlock and connect Varial / Freighter.");
+  if (expected && wallet.address !== expected)
     throw new Error(
-      "Freighter is locked or disconnected. Connect your wallet again.",
+      `Switch your wallet to ${expected}, then reconnect. This action needs that wallet’s signature.`,
     );
-  if (address && address !== current.address)
-    throw new Error(
-      "Your Freighter account changed. Connect again to review the new buyer wallet.",
-    );
-  return current.address;
+  return wallet.address;
 }
 export async function connectWallet() {
   if (!(await isConnected()).isConnected)
     throw new Error(
-      "Freighter is not available in this browser. Install the Freighter extension, set it to Testnet, and try again.",
+      "Varial / Freighter is unavailable in this browser. Open the page in Chrome with the wallet extension installed.",
     );
-  const result = await requestAccess();
-  if (result.error || !result.address)
-    throw new Error(result.error?.message || "Wallet connection was declined.");
-  return verifyWallet(result.address);
+  const access = await requestAccess();
+  if (access.error || !access.address)
+    throw new Error(access.error?.message || "Wallet connection was declined.");
+  return verifyWallet(access.address);
 }
-export async function purchaseRug(
+export async function restoreWallet() {
+  try {
+    const w = await getAddress();
+    return w.address ? await verifyWallet(w.address) : "";
+  } catch {
+    return "";
+  }
+}
+export function storedAction(id: string): ActionRecord | null {
+  try {
+    const r = JSON.parse(localStorage.getItem(storageKey(id)) || "null");
+    return r &&
+      /^[a-f0-9]{64}$/.test(r.hash) &&
+      ["pending", "confirmed", "failed", "expired"].includes(r.status)
+      ? r
+      : null;
+  } catch {
+    return null;
+  }
+}
+function persist(
   id: string,
-  buyer: string,
-  reviewedPrice: bigint,
-  onStep: (message: string) => void,
-): Promise<string> {
-  await verifyWallet(buyer);
-  const receipt = await readReceipt(id);
-  if (receipt.stage !== "Active" || receipt.ready_for_pickup)
-    throw new Error("This rug is no longer available. Refresh the receipt.");
-  if (receipt.approved_price !== reviewedPrice)
+  r: ActionRecord,
+  notify: (r: ActionRecord) => void,
+) {
+  localStorage.setItem(storageKey(id), JSON.stringify(r));
+  notify(r);
+}
+async function signAndSubmit(
+  id: string,
+  action: string,
+  address: string,
+  op: ReturnType<Contract["call"]> | ReturnType<typeof Operation.changeTrust>,
+  notice: (s: string) => void,
+  notify: (r: ActionRecord) => void,
+) {
+  await verifyWallet(address);
+  if (storedAction(id)?.status === "pending")
     throw new Error(
-      "The approved price changed. Refresh the receipt and review the new price before signing.",
+      "A transaction for this receipt is still pending. Refresh its status before another action.",
     );
-  if ((await readBalance(buyer)) < reviewedPrice)
-    throw new Error(
-      "Your wallet does not have enough test USDC for this purchase.",
-    );
-  onStep("Preparing your purchase…");
-  const account = await server.getAccount(buyer);
+  const account = await server.getAccount(address);
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: Networks.TESTNET,
   })
-    .addOperation(
-      new Contract(CONTRACT).call(
-        "buy",
-        receiptBytes(id),
-        new Address(buyer).toScVal(),
-        nativeToScVal(reviewedPrice, { type: "i128" }),
-      ),
-    )
+    .addOperation(op)
     .setTimeout(180)
     .build();
-  // Preserve the simulation's complete Soroban authorization tree and resource data.
-  const prepared = await server.prepareTransaction(tx);
-  await verifyWallet(buyer);
-  onStep("Review and sign in Freighter…");
-  const result = await signTransaction(prepared.toXDR(), {
+  let prepared: Transaction = tx;
+  if (action !== "trustline") {
+    const sim = await server.simulateTransaction(tx);
+    if (!rpc.Api.isSimulationSuccess(sim))
+      throw new Error(
+        simulationMessage("error" in sim ? String(sim.error) : ""),
+      );
+    prepared = rpc.assembleTransaction(tx, sim).build();
+  }
+  await verifyWallet(address);
+  notice("Review and sign in Varial / Freighter…");
+  const signed = await signTransaction(prepared.toXDR(), {
     networkPassphrase: Networks.TESTNET,
-    address: buyer,
+    address,
   });
-  if (result.error || !result.signedTxXdr)
+  if (signed.error || !signed.signedTxXdr)
     throw new Error(
-      result.error?.message ||
-        "Purchase signature was declined. No transaction was submitted.",
+      signed.error?.message || "Signature rejected. Nothing was submitted.",
     );
-  if (result.signerAddress !== buyer)
-    throw new Error("The signing wallet does not match the connected buyer.");
-  const signed = TransactionBuilder.fromXDR(
-    result.signedTxXdr,
+  if (signed.signerAddress !== address)
+    throw new Error("The signing wallet changed. Reconnect and review again.");
+  const decoded = TransactionBuilder.fromXDR(
+    signed.signedTxXdr,
     Networks.TESTNET,
   );
   if (
-    !(signed instanceof Transaction) ||
-    hex(signed.hash()) !== hex(prepared.hash())
+    !(decoded instanceof Transaction) ||
+    hex(decoded.hash()) !== hex(prepared.hash())
   )
+    throw new Error("The signed transaction differs from the reviewed action.");
+  let record: ActionRecord = {
+    hash: hex(decoded.hash()),
+    action,
+    status: "pending",
+    validUntil: Number(decoded.timeBounds?.maxTime || 0),
+  };
+  persist(id, record, notify);
+  notice("Submitted. Waiting for network confirmation…");
+  const response = await server.sendTransaction(decoded);
+  if (response.status === "ERROR") {
+    record = { ...record, status: "failed" };
+    persist(id, record, notify);
     throw new Error(
-      "The signed transaction does not match the purchase you reviewed.",
-    );
-  // Persist before submission: a timeout must not invite a second purchase attempt.
-  const hash = hex(signed.hash());
-  localStorage.setItem(
-    storageKey(id),
-    JSON.stringify({ hash, status: "pending" }),
-  );
-  onStep("Submitting to Stellar testnet…");
-  const sent = await server.sendTransaction(signed);
-  if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") {
-    localStorage.removeItem(storageKey(id));
-    throw new Error(
-      "The network did not accept this transaction. Refresh the receipt before trying again.",
+      "The network rejected the transaction. No successful action was recorded. Refresh and review before retrying.",
     );
   }
-  return hash;
+  return record;
+}
+export async function contractAction(
+  id: string,
+  method: string,
+  address: string,
+  args: xdr.ScVal[],
+  expected: string,
+  cost: bigint,
+  notice: (s: string) => void,
+  notify: (r: ActionRecord) => void,
+) {
+  await verifyWallet(expected);
+  if (address !== expected)
+    throw new Error("Reconnect the nominated wallet before this action.");
+  const wallet = await walletInfo(address);
+  if (!wallet.funded)
+    throw new Error(
+      "This wallet needs test XLM. Use the testnet faucet below.",
+    );
+  if (cost > 0n && (!wallet.trustline || wallet.balance < cost))
+    throw new Error(
+      `This wallet needs a Circle testnet USDC trustline and ${units(cost)} test USDC. Use the wallet setup controls below.`,
+    );
+  return signAndSubmit(
+    id,
+    method,
+    address,
+    new Contract(CONTRACT).call(method, receiptBytes(id), ...args),
+    notice,
+    notify,
+  );
+}
+export const amountValue = (n: bigint) => nativeToScVal(n, { type: "i128" });
+export const addressValue = (a: string) => new Address(a).toScVal();
+export async function addTrustline(
+  id: string,
+  address: string,
+  notice: (s: string) => void,
+  notify: (r: ActionRecord) => void,
+) {
+  return signAndSubmit(
+    id,
+    "trustline",
+    address,
+    Operation.changeTrust({
+      asset: new Asset("USDC", deployment.issuer),
+      limit: "1000",
+    }),
+    notice,
+    notify,
+  );
 }
 export async function awaitConfirmation(
-  hash: string,
-): Promise<"confirmed" | "failed" | "pending"> {
-  for (let i = 0; i < 40; i++) {
-    const result = await server.getTransaction(hash);
-    if (result.status === "SUCCESS") return "confirmed";
-    if (result.status === "FAILED") return "failed";
+  record: ActionRecord,
+): Promise<ActionRecord> {
+  for (let i = 0; i < 20; i++) {
+    const r = await server.getTransaction(record.hash);
+    if (r.status === "SUCCESS") return { ...record, status: "confirmed" };
+    if (r.status === "FAILED") return { ...record, status: "failed" };
+    if (
+      r.status === "NOT_FOUND" &&
+      record.validUntil > 0 &&
+      Date.now() / 1000 > record.validUntil + 30
+    )
+      return { ...record, status: "expired" };
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
-  return "pending";
+  return record;
 }

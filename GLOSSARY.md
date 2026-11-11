@@ -19,7 +19,7 @@ _Avoid_: Rug token, ownership token
 The investor who advances funds to the weaver in exchange for an agreed repayment.
 
 **Loan terms**:
-The agreed advance, lender repayment, and fixed warehouse custody fee accepted by the weaver before funding.
+The advance, lender repayment, custody fee, fallback price, duration, and nominated lender and dealer accepted by the weaver before funding.
 
 **Active loan**:
 A funded loan that has not been settled; its receipt cannot secure another loan.
@@ -28,8 +28,28 @@ A funded loan that has not been settled; its receipt cannot secure another loan.
 The amount the weaver agrees a buyer must pay for the rug.
 
 **Settlement**:
-The distribution of the buyer’s payment to the lender, warehouse, and weaver.
+The completed payment that repays the lender, pays custody, and determines who may collect the rug.
 
 **Ready for pickup**:
 The rug’s release status after settlement succeeds, distinct from the physical handoff.
 _Avoid_: Delivered, shipped
+
+**Dealer**:
+The nominated rug purchaser who promises to buy an unpaid overdue rug at an agreed fallback price.
+_Avoid_: Guarantor, insurer
+
+**Fallback commitment**:
+The dealer’s authorized promise to pay a specified price for the rug after its repayment deadline; the promise itself is not a payment.
+
+**Repayment deadline**:
+The end of the agreed loan duration measured from successful funding.
+
+**Overdue loan**:
+An unsettled loan whose repayment deadline has arrived. Its rug remains locked until payment settles it.
+_Avoid_: Liquidated, settled by default
+
+**Direct repayment**:
+Payment by the weaver of the lender repayment and custody fee to reclaim pickup rights.
+
+**Pickup recipient**:
+The wallet cleared to collect the rug after settlement: its buyer, its dealer purchaser, or its repaying weaver.

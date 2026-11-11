@@ -1,3 +1,7 @@
+# Current full-demo verification
+
+The `codex/full-loan-demo` branch uses a new contract and five role pages. See [the full verification report](../docs/full-demo-verification.md) for its current browser checks, exact testnet payouts, and remaining wallet steps. The report below describes the **earlier buyer-only deployment** and must not be read as a wallet test of the new contract.
+
 # Browser verification
 
 Verified against the production build (`npm run build` followed by `npm start`) on 2026-11-10, using the actual deployed contract and live Stellar testnet RPC. No wallet or contract responses were mocked.

@@ -1,0 +1,120 @@
+{
+  "stage": "held",
+  "receipts": [
+    {
+      "id": "e8de45fb185fc95c6b724226c84bba172a96eae742a3cde478c90b80d59f2e34",
+      "name": "Normal Sale \u00b7 e8de45",
+      "description": "Illustrative warehouse-held rug for the normal-sale demo.",
+      "scenario": "normal-sale"
+    },
+    {
+      "id": "241bc29ad1f2492aefd35e6c59da27726d6a21c6e690b8940faa499a91c525e1",
+      "name": "Direct Repayment \u00b7 241bc2",
+      "description": "Illustrative warehouse-held rug for the direct-repayment demo.",
+      "scenario": "direct-repayment"
+    },
+    {
+      "id": "eff1cb129a7bd5e30a92a74338b94139e799d45bd5f760999ccb3d8069ccc484",
+      "name": "Dealer Default \u00b7 eff1cb",
+      "description": "Illustrative warehouse-held rug for the dealer-default demo.",
+      "scenario": "dealer-default"
+    }
+  ],
+  "transactions": [
+    {
+      "action": "topup-lender",
+      "hashes": [
+        "81edaa87d355914dc1d0a91264fac465edcd6cf498d48ef1eafa5b79f55daa50"
+      ],
+      "exit_code": 0,
+      "arguments": [
+        "tx",
+        "new",
+        "path-payment-strict-receive",
+        "--source",
+        "demo-lender",
+        "--network",
+        "testnet",
+        "--send-asset",
+        "native",
+        "--send-max",
+        "50000000000",
+        "--destination",
+        "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+        "--dest-asset",
+        "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        "--dest-amount",
+        "50000000"
+      ]
+    },
+    {
+      "action": "normal-sale-register",
+      "hashes": [
+        "4aea6995a3c6d9f7b558f12c6f94568c18f2b0ac8cd9028268e9c0aefc326e0a"
+      ],
+      "exit_code": 0,
+      "arguments": [
+        "contract",
+        "invoke",
+        "--id",
+        "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+        "--source",
+        "demo-warehouse",
+        "--network",
+        "testnet",
+        "--",
+        "register_receipt",
+        "--id",
+        "e8de45fb185fc95c6b724226c84bba172a96eae742a3cde478c90b80d59f2e34",
+        "--weaver",
+        "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      ]
+    },
+    {
+      "action": "direct-repayment-register",
+      "hashes": [
+        "99ab0f0201a81e346add0e16ef0600d67c8370a6747efa33bb75a2c2d8492840"
+      ],
+      "exit_code": 0,
+      "arguments": [
+        "contract",
+        "invoke",
+        "--id",
+        "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+        "--source",
+        "demo-warehouse",
+        "--network",
+        "testnet",
+        "--",
+        "register_receipt",
+        "--id",
+        "241bc29ad1f2492aefd35e6c59da27726d6a21c6e690b8940faa499a91c525e1",
+        "--weaver",
+        "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      ]
+    },
+    {
+      "action": "dealer-default-register",
+      "hashes": [
+        "e866d687a147f9aa22d44b318deac910d0af430c73ec085f0cb21f2fdf4236af"
+      ],
+      "exit_code": 0,
+      "arguments": [
+        "contract",
+        "invoke",
+        "--id",
+        "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+        "--source",
+        "demo-warehouse",
+        "--network",
+        "testnet",
+        "--",
+        "register_receipt",
+        "--id",
+        "eff1cb129a7bd5e30a92a74338b94139e799d45bd5f760999ccb3d8069ccc484",
+        "--weaver",
+        "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      ]
+    }
+  ]
+}
