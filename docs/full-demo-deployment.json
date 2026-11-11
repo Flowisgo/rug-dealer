@@ -1,0 +1,145 @@
+{
+  "deployment": {
+    "network": "testnet",
+    "contract": "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+    "usdc": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "issuer": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+    "accounts": {
+      "warehouse": "GB5XD54TTJUPJOJPU7BAWLG2JITEQG6CSHINBHB43KK6QNUKZ7N75MYA",
+      "weaver": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+      "lender": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+      "dealer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+      "buyer": "GAZEYVQKTXGU7XCSY7W6T2YJ4TUN2ZEACLC3QJI3FPQLCOW3WZKUAN3D"
+    },
+    "receipts": []
+  },
+  "transactions": [
+    {
+      "action": "create-warehouse",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "address-warehouse",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "trust-warehouse",
+      "hashes": [
+        "2d19db38f8b2a0130f755091cde4c19dedd61ab509c1b1ec5913fb0f58c6fbfb"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "create-weaver",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "address-weaver",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "trust-weaver",
+      "hashes": [
+        "742f17b08b5679511a0bdcb1034f996c1f7d53087542c39175ad8cd4165a0420"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "create-lender",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "address-lender",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "trust-lender",
+      "hashes": [
+        "cc123fc5a0b109e7dc38d483286eeb960a616ae2b96546041adaaa43df77eb4a"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "create-dealer",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "address-dealer",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "trust-dealer",
+      "hashes": [
+        "b607066629573c00bb7d4963ea0132b49b85308ce17cb1de6c5154c1d09121d6"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "create-buyer",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "address-buyer",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "trust-buyer",
+      "hashes": [
+        "fcc1d8e1c7c7734f6f01ff9c96f412f463855051ad95d49f26e5008001b28fb5"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "topup-lender",
+      "hashes": [
+        "9a04b1e4427b0857d58f79e18f481c4dd5b62ecdd04aac93244ddf691cf63516"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "topup-buyer",
+      "hashes": [
+        "7a5fa89156f9d68e66386ddd11b770518a1c33865f611230f66d9d3ba8cf5451"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "topup-dealer",
+      "hashes": [
+        "6177005499e071b880b683007c06631d7413e132eac85c1bca0f8db9f8449803"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "topup-weaver",
+      "hashes": [
+        "bb322a608f457a769a514bdfb8a4342839ffa770ecbe8be9cf9644333de93952"
+      ],
+      "exit_code": 0
+    },
+    {
+      "action": "usdc-id",
+      "hashes": [],
+      "exit_code": 0
+    },
+    {
+      "action": "deploy",
+      "hashes": [
+        "0c8a3f8b1c304d64016d599bb089e1d5b789cbd9cb0f2fd516d07d0e08e4c84e",
+        "257e6115b1dde252a8ed1166fe4608d80e385189a178178b0bedc9aa6a64443a"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "wasm_sha256": "493191fd68ab7a5fbe08f73fac12c40207b2fac268b716d632523e6f72d27b17"
+}

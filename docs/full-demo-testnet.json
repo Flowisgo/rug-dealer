@@ -1,0 +1,109 @@
+{
+  "contract": "CAHEWX6WTJLTOMDYIPYVUBO5TAVKAFSMDPUXRVDYTNP4COZWXWYU6ZKC",
+  "network": "testnet",
+  "outcomes": [
+    {
+      "scenario": "normal-sale",
+      "receipt_id": "73253dc2ee4d6c27923d078d3f9c14d564edad1f89a1020adf4f042d5a8cfeb0",
+      "transaction_hash": "3bf2c8c80fcea0b8fdaf8c2efabfdd95c699d8e081008b9ff4cc784b0554a9dd",
+      "settlement_delta_usdc": {
+        "warehouse": "1",
+        "lender": "9",
+        "weaver": "5",
+        "buyer": "-15",
+        "dealer": "0"
+      },
+      "final_receipt": {
+        "approved_price": "150000000",
+        "buyer": "GAZEYVQKTXGU7XCSY7W6T2YJ4TUN2ZEACLC3QJI3FPQLCOW3WZKUAN3D",
+        "deadline": 1794359153,
+        "dealer_committed": true,
+        "funded_at": 1794358253,
+        "pickup_recipient": "GAZEYVQKTXGU7XCSY7W6T2YJ4TUN2ZEACLC3QJI3FPQLCOW3WZKUAN3D",
+        "ready_for_pickup": true,
+        "stage": "SaleSettled",
+        "terms": {
+          "Accepted": {
+            "advance": "80000000",
+            "custody_fee": "10000000",
+            "dealer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+            "duration_secs": 900,
+            "fallback_price": "100000000",
+            "lender": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+            "lender_due": "90000000"
+          }
+        },
+        "weaver": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      }
+    },
+    {
+      "scenario": "direct-repayment",
+      "receipt_id": "4a19a22e36d0659e6f40e9c923e82be023ce72c007c549bd55e313ff2c75cd9b",
+      "transaction_hash": "fb4b98b467c2db734cad4052ed6b421259167e8af688db15a3db0a17fa29b773",
+      "settlement_delta_usdc": {
+        "warehouse": "1",
+        "lender": "9",
+        "weaver": "-10",
+        "buyer": "0",
+        "dealer": "0"
+      },
+      "final_receipt": {
+        "approved_price": "150000000",
+        "buyer": null,
+        "deadline": 1794359183,
+        "dealer_committed": true,
+        "funded_at": 1794358283,
+        "pickup_recipient": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C",
+        "ready_for_pickup": true,
+        "stage": "Repaid",
+        "terms": {
+          "Accepted": {
+            "advance": "80000000",
+            "custody_fee": "10000000",
+            "dealer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+            "duration_secs": 900,
+            "fallback_price": "100000000",
+            "lender": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+            "lender_due": "90000000"
+          }
+        },
+        "weaver": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      }
+    },
+    {
+      "scenario": "dealer-default",
+      "receipt_id": "031741a35b52e8b2f6563a1e3dec0b63277041c815421a5325c9f9727d8d2d3c",
+      "transaction_hash": "a808dda216f91d27a44aaa03578392a37478e65fc9bfb1f76b2a49367520be1f",
+      "settlement_delta_usdc": {
+        "warehouse": "1",
+        "lender": "9",
+        "weaver": "0",
+        "buyer": "0",
+        "dealer": "-10"
+      },
+      "final_receipt": {
+        "approved_price": "150000000",
+        "buyer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+        "deadline": 1794358368,
+        "dealer_committed": true,
+        "funded_at": 1794358308,
+        "pickup_recipient": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+        "ready_for_pickup": true,
+        "stage": "DealerPurchased",
+        "terms": {
+          "Accepted": {
+            "advance": "80000000",
+            "custody_fee": "10000000",
+            "dealer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36",
+            "duration_secs": 60,
+            "fallback_price": "100000000",
+            "lender": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+            "lender_due": "90000000"
+          }
+        },
+        "weaver": "GDEWW4DA64GIEJTWZMO3GKLDZBBQJ2R2Y5D7QTZTGAZIJAIIXS3AYJ3C"
+      }
+    }
+  ],
+  "verification": "Read-only Horizon transaction/transfer checks and get_receipt simulations. No payment submitted by verify."
+}

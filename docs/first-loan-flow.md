@@ -1,5 +1,7 @@
 # First loan: local successful sale
 
+> Historical API for PR #3 and its original deployment. On `codex/full-loan-demo`, use [the extended API](full-demo-api.md) and [demo instructions](full-demo.md).
+
 This slice implements a Soroban contract and local host tests. It does not include a frontend, wallet integration, testnet deployment, default handling, separate repayment, or physical pickup confirmation.
 
 ## Run locally

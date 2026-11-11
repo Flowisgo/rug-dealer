@@ -1,0 +1,19 @@
+{
+  "receipt_id": "9b2ee2c82048f41305899373e01a3af6f6ad12aa46ee9c4d5eadeff53508536a",
+  "terms": {
+    "advance": "80000000",
+    "lender_due": "90000000",
+    "custody_fee": "10000000",
+    "fallback_price": "100000000",
+    "duration_secs": 120,
+    "lender": "GBGXZZZ4BOJHGV52NX7Q6BCGSZGXTQVIJMVX7ZFEUBDKLGDPW64PXTVG",
+    "dealer": "GBQFP4ZL5QOTT36Q3UUODEOZ7HFUF7NWQ5Q5UENS2CYRE3ZAZADWWG36"
+  },
+  "transactions": [
+    "308cd0a452227d1644ffe6b2bae5e449d7d66e9718cbd5180d8c4d121fc65f7a",
+    "7ba27062079e0ec4c0a7d48558ed662f33664e035773877e2eb5ee52b2939787",
+    "e2fa73d481f856ce6787f9823d73418099bcfc9ec025fe764718f57435eceb8d",
+    "2af8e25aafdc720e3f93d6c47f18e4f2b0e688404dec5d42a76fba8bff395faf"
+  ],
+  "purpose": "Unpaid overdue QA receipt. Financial steps were performed through CLI; browser verified the displayed terms/status, not new wallet signatures."
+}
