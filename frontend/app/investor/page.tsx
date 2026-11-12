@@ -228,10 +228,10 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
   );
 }
 
-function MyLoan({ loan, rug, now, win, data }: { loan: Loan; rug?: Rug; now: bigint; win: bigint; data: Ledger }) {
+function MyLoan({ loan, rug, now, win, data }: { loan: Loan; rug?: Rug; now: bigint | null; win: bigint; data: Ledger }) {
   const phase = loanPhase(loan, now, win);
   const tone: Tone = phase === "running" ? "secured" : phase === "buyout" || phase === "claimable" ? "late" : "done";
-  const text = phase === "running" ? "Running" : phase === "buyout" ? "Overdue" : phase === "claimable" ? "Store missed buy-out" : LOAN_STATUS_TEXT[loan.status];
+  const text = phase === "checking" ? "Ledger time unavailable" : phase === "running" ? "Running" : phase === "buyout" ? "Overdue" : phase === "claimable" ? "Store missed buy-out" : LOAN_STATUS_TEXT[loan.status];
   return (
     <RugCard id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone={tone}>{text}</Tag>}>
       <div className="card-meta">

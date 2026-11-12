@@ -87,7 +87,7 @@ export function explainError(raw: string, events: xdr.DiagnosticEvent[] = [], di
 export function messageOf(e: unknown): string {
   if (e instanceof AppError) return e.message;
   if (e instanceof Error) {
-    if (/Failed to fetch|NetworkError|ECONN|timeout/i.test(e.message))
+    if (/Failed to fetch|fetch failed|NetworkError|ECONN|ENOTFOUND|ETIMEDOUT|timeout|RPC.*unavailable|status code 5\d\d/i.test(e.message))
       return "Couldn't reach the Stellar testnet. Check your connection and refresh.";
     return e.message;
   }

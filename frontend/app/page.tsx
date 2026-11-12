@@ -112,7 +112,7 @@ export default function Home() {
         <div className="outcomes">
           <article className="outcome">
             <h3>The weaver repays</h3>
-            <p>Any time before the store buys the rug, the weaver pays back {usd(EXAMPLE.principal)}.</p>
+            <p>Any time before a store buy-out or investor claim confirms, the weaver pays back {usd(EXAMPLE.principal)}.</p>
             <dl>
               <div>
                 <dt>Weaver</dt>
@@ -125,7 +125,7 @@ export default function Home() {
               <div>
                 <dt>Investor</dt>
                 <dd>
-                  Gets back <MoneyInline units={EXAMPLE.investor_payout} />.
+                  Receives <MoneyInline units={EXAMPLE.investor_payout} />, or the same amount as held credit if delivery fails.
                 </dd>
               </div>
             </dl>
@@ -145,7 +145,7 @@ export default function Home() {
               <div>
                 <dt>Investor</dt>
                 <dd>
-                  Gets back <MoneyInline units={EXAMPLE.investor_payout} />.
+                  Receives <MoneyInline units={EXAMPLE.investor_payout} />, or the same amount as held credit if delivery fails.
                 </dd>
               </div>
             </dl>
@@ -165,7 +165,7 @@ export default function Home() {
               <div>
                 <dt>Investor</dt>
                 <dd>
-                  Takes the rug and the {usd(EXAMPLE.interest)} interest. The {usd(EXAMPLE.principal)} isn't paid back; the rug stands in for it.
+                  Takes the rug and receives (or is credited) the {usd(EXAMPLE.interest)} interest. The {usd(EXAMPLE.principal)} isn't paid back; the rug stands in for it.
                 </dd>
               </div>
             </dl>

@@ -253,3 +253,25 @@ it("reports an unavailable credit read instead of hiding it as zero", async () =
   expect(container.textContent).toContain("Held payout balance unavailable");
   expect(container.textContent).toContain("Couldn't reach the Stellar testnet");
 });
+it("reports unavailable ledger time without calling an overdue loan Running", async () => {
+  const previous = loan.status;
+  loan.status = ["Funded"];
+  vi.mocked(rpc.Server.prototype.getLedgers).mockRejectedValue(
+    new Error("RPC unavailable"),
+  );
+  try {
+    await act(async () => {
+      await refreshLedger();
+      root.render(
+        <WalletProvider>
+          <InvestorPage />
+        </WalletProvider>,
+      );
+    });
+    expect(container.textContent).toContain("Ledger time unavailable");
+    expect(container.textContent).not.toContain("Running");
+    expect(container.textContent).not.toContain("Take the rug");
+  } finally {
+    loan.status = previous;
+  }
+});

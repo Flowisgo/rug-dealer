@@ -86,3 +86,24 @@ it.each([10, 13])(
     ).rejects.toMatchObject({ source: "usdc", code });
   },
 );
+it("preserves an RPC account lookup failure rather than asking for XLM", async () => {
+  const { NETWORK_PASSPHRASE } = await import("../lib/deployment");
+  const { messageOf } = await import("../lib/errors");
+  ext.isConnected.mockResolvedValue({ isConnected: true });
+  ext.getNetworkDetails.mockResolvedValue({
+    networkPassphrase: NETWORK_PASSPHRASE,
+  });
+  ext.getAddress.mockResolvedValue({ address: ACCOUNTS.investor });
+  vi.spyOn(rpc.Server.prototype, "getAccount").mockRejectedValue(
+    new Error("fetch failed"),
+  );
+  const result = await invoke({
+    source: ACCOUNTS.investor,
+    method: "fund_loan",
+    args: [],
+    label: "Fund rug",
+  }).catch((e) => messageOf(e));
+  expect(result).toBe(
+    "Couldn't reach the Stellar testnet. Check your connection and refresh.",
+  );
+});

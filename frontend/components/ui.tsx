@@ -81,7 +81,7 @@ export function Party({ address, link = false, store = false }: { address: strin
 
 export function Countdown({ to, done }: { to: bigint; done?: ReactNode }) {
   const now = useNow();
-  if (now === 0n) return <span>Checking ledger time…</span>;
+  if (now === null) return <span>Checking ledger time…</span>;
   const left = to - now;
   if (left <= 0n) return <>{done ?? "now"}</>;
   return <span className="mono">{clock(left)}</span>;

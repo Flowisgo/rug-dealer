@@ -65,17 +65,18 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
     const p = loanPhase(l, now, win);
     return p === "buyout" || p === "claimable";
   });
-  const running = myLoans.filter((l) => loanPhase(l, now, win) === "running");
+  const running = myLoans.filter((l) => ["running", "checking"].includes(loanPhase(l, now, win)));
   const myRugs = data.rugs.filter((r) => r.store === address).sort((a, b) => Number(b.id - a.id));
   const rugById = new Map(data.rugs.map((r) => [r.id, r]));
 
   return (
     <>
       <StoreStatus store={store} reason={data.frozenReason[address]} />
+      {now === null && <p className="notice warn">Ledger time unavailable. Timed buy-out actions are disabled while the network is checked.</p>}
 
       <Section label="Overdue loans" count={overdue.length}>
         {overdue.length === 0 ? (
-          <Empty title="Nothing overdue.">When a loan passes its end date without repayment, it shows here with your buy-out window.</Empty>
+          <Empty title={now === null ? "Checking overdue loans…" : "Nothing overdue."}>When a loan passes its end date without repayment, it shows here with your buy-out window.</Empty>
         ) : (
           <div className="card-list">
             {overdue.map((l) => (
@@ -99,7 +100,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
         </Section>
       )}
 
-      <Section label="Loans running" count={running.length}>
+      <Section label={now === null ? "Loans awaiting time check" : "Loans running"} count={running.length}>
         {running.length === 0 ? (
           <Empty title="No loans running.">Funded loans on your rugs show here until they're repaid or due.</Empty>
         ) : (
@@ -177,9 +178,9 @@ function StoreStatus({ store, reason }: { store: Store; reason?: "Platform" | "M
   );
 }
 
-function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; win: bigint }) {
+function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint | null; win: bigint }) {
   const closes = loan.end_at! + win;
-  const open = now < closes;
+  const open = now !== null && now < closes;
   return (
     <RugCard id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="late">Overdue</Tag>}>
       <div className="card-meta">

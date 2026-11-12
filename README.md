@@ -20,10 +20,10 @@ A weaver often needs cash the day a rug comes off the loom. A real buyer may pay
 3. **Repay, or the store buys the rug.**
    - **Weaver repays.** The weaver pays back the loan amount, collects the rug and can sell it to a real buyer whenever one turns up.
    - **Weaver doesn't repay.** The store must buy the rug at the same price within its buy-out window (60 seconds in this demo; 7 days planned), and the investor is paid from that.
-   - **Weaver repays late.** Until the store's payment lands, the weaver can still repay.
+   - **Weaver repays late.** Until a store buy-out or investor claim confirms, the weaver can still repay.
    - **The store misses its buy-out too.** The store is frozen, and the investor takes the rug and the interest instead of the loan amount.
 
-When the weaver repays or the store buys, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
+When the weaver repays or the store buys, the investor receives the loan amount plus interest, or an equal backed credit if wallet delivery fails. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
 
 ### Worked example
 

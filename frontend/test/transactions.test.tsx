@@ -158,3 +158,10 @@ it.each([0, 1])(
     await [first, second][1 - firstToFinish];
   },
 );
+it("recovers valid transactions even beside a malformed saved record", async () => {
+  remember(1000);
+  localStorage.setItem(`${key}:broken`, "{");
+  const recovered = await resumePendings();
+  expect(recovered).toHaveLength(1);
+  expect(recovered[0]?.pending.hash).toBe(old);
+});
