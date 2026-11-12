@@ -183,12 +183,12 @@ Only valid while the loan is `Funded`. Repayment is allowed at any time before `
 
 Effects:
 - pulls exactly `principal` USDC from the weaver
-- pays `principal + interest` to the investor
+- pays `principal + interest` to the investor with `try_transfer`; if that transfer fails, the full amount is recorded as investor credit and `investor_credited` is emitted
 - returns the rug to `Free`; owner remains the weaver
-- releases the store’s principal reservation
+- releases the store's principal reservation
 - loan status `Repaid`
 
-Emits `loan_repaid`.
+Emits `loan_repaid`, plus `investor_credited` when the investor payout could not be delivered.
 
 Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
 
@@ -206,12 +206,12 @@ Before `end_at` returns `TooEarly`; at or after `end_at + buyout_window_seconds`
 
 Effects:
 - pulls exactly `principal` USDC from the store
-- pays `principal + interest` to the investor
+- pays `principal + interest` to the investor with `try_transfer`; if that transfer fails, the full amount is recorded as investor credit and `investor_credited` is emitted
 - transfers rug ownership to the store, rug status `Free`
-- releases the store’s principal reservation
+- releases the store's principal reservation
 - loan status `BoughtOut`
 
-Emits `store_bought_out`. The store and platform fees were already paid at funding and are not refunded.
+Emits `store_bought_out`, plus `investor_credited` when the investor payout could not be delivered. The store and platform fees were already paid at funding and are not refunded.
 
 Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `TooEarly`, `BuyoutWindowClosed`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
 
@@ -228,13 +228,13 @@ now >= end_at + buyout_window_seconds
 Before that returns `BuyoutWindowOpen`. The two windows are half-open and never overlap: the store can buy out up to but not including the window end; the investor can claim from the window end onward.
 
 Effects:
-- pays the held `interest` to the investor; principal is not returned
+- pays the held `interest` to the investor with `try_transfer`; if that transfer fails, the interest is recorded as investor credit and `investor_credited` is emitted
 - transfers rug ownership to the investor, rug status `Free`
 - freezes the store
-- releases the store’s principal reservation
+- releases the store's principal reservation
 - loan status `Claimed`
 
-Emits `rug_claimed` and emits `store_frozen` with reason `MissedBuyout` to flag the missed buy-out.
+Emits `rug_claimed`, `store_frozen` with reason `MissedBuyout`, and `investor_credited` when the interest could not be delivered.
 
 Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `BuyoutWindowOpen`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
 
@@ -248,6 +248,18 @@ Emits `rug_redeemed`.
 
 Errors: `RugNotFound`, `NotRugOwner`, `RugNotFree`.
 
+### `withdraw_credit(investor) -> i128`
+
+Signer: `investor`.
+
+Transfers the whole recorded credit to the investor, sets the credit to 0, emits `credit_withdrawn`, and returns the amount. If the token transfer fails (for example, the investor still cannot receive USDC), the call fails and the credit remains available.
+
+Errors: `NothingToWithdraw` when the credit is 0. USDC transfer failures surface as token/host errors and leave the credit unchanged.
+
+### `get_credit(address) -> i128`
+
+View, no auth. Returns the address's recorded credit, or 0 if none. Credit is held by the contract as USDC until withdrawn.
+
 ### Views
 
 Views require no auth.
@@ -255,8 +267,9 @@ Views require no auth.
 - `get_config() -> Config`
 - `get_store(store: Address) -> Store` — `StoreNotRegistered` if missing
 - `get_rug(rug_id: u64) -> Rug` — `RugNotFound` if missing
-- `get_loan(loan_id: u64) -> Loan` — `LoanNotFound` if missing
-- `next_rug_id() -> u64` — the id that the next `mint_rug` will use
+- `get_loan(loan_id: u64) -> Loan` - `LoanNotFound` if missing
+- `get_credit(address: Address) -> i128` - 0 if no credit
+- `next_rug_id() -> u64` - the id that the next `mint_rug` will use
 - `next_loan_id() -> u64` — the id that the next `request_loan` will use
 - `quote(principal: i128, months: u32) -> Quote` — pure fee calculation using the stored config; `InvalidAmount` or `InvalidMonths`
 - `is_overdue(loan_id: u64) -> bool` — true only while the loan is `Funded` and `now >= end_at`; overdue is derived, never stored; `LoanNotFound` if missing
@@ -339,11 +352,19 @@ weaver_payout: i128
 investor_payout: i128
 ```
 
+### `Credit` (persistent, keyed by investor address)
+
+```text
+Credit(Address) -> i128
+```
+
+A claim on USDC held by the contract. It is created only when an investor payout cannot be delivered during `repay`, `store_buyout`, or `claim_rug`. `withdraw_credit` clears it to 0.
+
 ### Storage keys
 
 ```text
 instance:    Config, NextRugId, NextLoanId
-persistent:  Store(Address), Rug(u64), Loan(u64)
+persistent:  Store(Address), Rug(u64), Loan(u64), Credit(Address)
 ```
 
 Persistent entries and instance storage are bumped with a 100,000-ledger threshold and 200,000-ledger extension on access/save.
@@ -364,6 +385,8 @@ Events use the Soroban `#[contractevent]` macro, so their types are part of the 
 | `loan_repaid` | `loan_id` | `rug_id`, `weaver`, `investor`, `principal`, `interest` | `repay` |
 | `store_bought_out` | `loan_id` | `rug_id`, `store`, `investor`, `principal`, `interest` | `store_buyout` |
 | `rug_claimed` | `loan_id` | `rug_id`, `investor`, `store`, `interest` | `claim_rug` |
+| `investor_credited` | `investor` | `loan_id`, `amount` | `repay`, `store_buyout`, `claim_rug` when the investor payout fails |
+| `credit_withdrawn` | `investor` | `amount` | `withdraw_credit` |
 | `rug_redeemed` | `rug_id` | `store`, `holder` | `redeem` |
 
 ## Errors
@@ -393,7 +416,8 @@ Events use the Soroban `#[contractevent]` macro, so their types are part of the 
 | 21 | `InvalidState` | Internal state invariant failed (for example, a rug/loan status mismatch). |
 | 22 | `WeaverIsStore` | `mint_rug` was asked to give the certificate to a registered store. |
 | 23 | `StoreCannotBorrow` | `request_loan` was called by a registered store. |
-| 24 | `InvestorIsParty` | `fund_loan` was called by the loan’s weaver or the loan’s store. |
+| 24 | `InvestorIsParty` | `fund_loan` was called by the loan's weaver or the loan's store. |
+| 25 | `NothingToWithdraw` | `withdraw_credit` was called when the investor has no credit. |
 
 ## Guarantees covered by tests
 
@@ -426,6 +450,13 @@ Role-safety checks:
 - Refused role checks leave store principal, rug status, loan state and USDC balances unchanged.
 - A store holding a rug it bought out can redeem it with its own signature alone.
 
+Investor credit fallback:
+- `repay`, `store_buyout` and `claim_rug` complete even when the investor’s USDC transfer fails (for example, a deauthorized trustline).
+- The undelivered amount is recorded exactly as `Credit(investor)`, the loan reaches its closed status, and the rug/store state moves as normal.
+- The contract’s USDC balance always covers outstanding credit; total USDC is conserved to the stroop.
+- `withdraw_credit` pays the credit once, zeroes it, and a second call returns `NothingToWithdraw`.
+- Normal settlements where the investor can receive record no credit and preserve the existing balance expectations.
+
 ## Testnet deployment
 
 Deployed and exercised on Stellar Testnet on 2026-11-12.
@@ -433,9 +464,9 @@ Deployed and exercised on Stellar Testnet on 2026-11-12.
 | Item | Value |
 |---|---|
 | Network | `testnet` |
-| Contract ID | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
-| Deploy ledger | `5,695,308` |
-| Deploy transaction | `42c3d3962232ab5b2cf1a4ae0170ba4d443873973acf103feb93ee3be5c654a0` |
+| Contract ID | `CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J` |
+| Deploy ledger | `5,698,981` |
+| Deploy transaction | `c7d13f5a55bf572e2afe933ce2f6254e7edf988b610917b7d0acad45ed08bc71` |
 | USDC SAC address | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | USDC classic asset | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 | USDC issuer | `GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
@@ -465,7 +496,7 @@ Public deployment data:
 - `docs/testnet-deployment.json` — contract, USDC, public keys, parameters, transaction hashes
 - `docs/testnet-demo-results.json` — exact balance deltas and final loan/rug state for the repay, buy-out, and claim scenarios
 - `docs/testnet-demo.md` — deployment/demo runbook, script commands, and the current public testnet addresses
-- `https://stellar.expert/explorer/testnet/contract/CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR`
+- `https://stellar.expert/explorer/testnet/contract/CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J`
 
 Secret keys are **not** in this repository. The demo identities live in the Stellar CLI config directory `~/.rugdealer-demo/config` (created by `scripts/testnet.py`). Only public keys are recorded here.
 

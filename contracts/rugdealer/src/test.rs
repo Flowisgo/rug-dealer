@@ -46,9 +46,11 @@ impl TestEnv {
         let investor = Address::generate(&env);
         let usdc_issuer = Address::generate(&env);
 
-        let usdc = env
-            .register_stellar_asset_contract_v2(usdc_issuer)
-            .address();
+        let usdc_sac = env.register_stellar_asset_contract_v2(usdc_issuer);
+        usdc_sac
+            .issuer()
+            .set_flag(soroban_sdk::testutils::IssuerFlags::RevocableFlag);
+        let usdc = usdc_sac.address();
         let contract = env.register(
             RugDealer,
             (
@@ -122,6 +124,10 @@ impl TestEnv {
     fn mint_usdc(&self, to: &Address, amount: i128) {
         StellarAssetClient::new(&self.env, &self.usdc).mint(to, &amount);
     }
+
+    fn set_authorized(&self, address: &Address, authorized: bool) {
+        StellarAssetClient::new(&self.env, &self.usdc).set_authorized(address, &authorized);
+    }
 }
 
 fn contract_error<T, E>(
@@ -179,6 +185,7 @@ fn worked_example_money_flows() {
 
     let store = client.get_store(&test.store);
     assert_eq!(store.open_principal, 0);
+    assert_eq!(client.get_credit(&test.investor), 0);
 }
 
 #[test]
@@ -733,6 +740,7 @@ fn store_buyout_allowed_at_end() {
     assert_eq!(rug.status, RugStatus::Free);
     assert_eq!(test.client().get_store(&test.store).open_principal, 0);
     assert!(!test.client().is_overdue(&loan_id));
+    assert_eq!(test.client().get_credit(&test.investor), 0);
 }
 
 #[test]
@@ -822,6 +830,7 @@ fn claim_allowed_at_window_end() {
     let store = test.client().get_store(&test.store);
     assert!(store.frozen);
     assert_eq!(store.open_principal, 0);
+    assert_eq!(test.client().get_credit(&test.investor), 0);
 }
 
 #[test]
@@ -1152,6 +1161,134 @@ fn store_can_redeem_a_rug_it_bought_out_as_the_only_signer() {
         test.client().get_rug(&test.rug_id).status,
         RugStatus::Redeemed
     );
+}
+
+#[test]
+fn repay_credits_and_withdraw_credit_pays_once() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let quote = test.client().quote(&(600 * USDC), &6);
+    let expected = quote.investor_payout;
+    let investor_before = test.balance(&test.investor);
+    let contract_before = test.balance(&test.contract);
+
+    test.set_authorized(&test.investor, false);
+    test.client().repay(&loan_id);
+
+    assert_eq!(test.client().get_loan(&loan_id).status, LoanStatus::Repaid);
+    let rug = test.client().get_rug(&test.rug_id);
+    assert_eq!(rug.owner, test.weaver);
+    assert_eq!(rug.status, RugStatus::Free);
+    assert_eq!(test.client().get_store(&test.store).open_principal, 0);
+    assert_eq!(test.client().get_credit(&test.investor), expected);
+    assert_eq!(test.balance(&test.investor), investor_before);
+    assert_eq!(test.balance(&test.contract), contract_before + 600 * USDC);
+    assert_eq!(
+        test.balance(&test.contract),
+        test.client().get_credit(&test.investor)
+    );
+
+    test.set_authorized(&test.investor, true);
+    let paid = test.client().withdraw_credit(&test.investor);
+    assert_eq!(paid, expected);
+    assert_eq!(test.client().get_credit(&test.investor), 0);
+    assert_eq!(test.balance(&test.investor), investor_before + expected);
+    assert_eq!(test.balance(&test.contract), 0);
+    assert_eq!(
+        contract_error(test.client().try_withdraw_credit(&test.investor)),
+        Error::NothingToWithdraw
+    );
+}
+
+#[test]
+fn store_buyout_credits_investor_when_transfer_fails() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let quote = test.client().quote(&(600 * USDC), &6);
+    let expected = quote.investor_payout;
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let investor_before = test.balance(&test.investor);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+
+    test.set_authorized(&test.investor, false);
+    test.set_time(end_at);
+    test.client().store_buyout(&loan_id);
+
+    assert_eq!(
+        test.client().get_loan(&loan_id).status,
+        LoanStatus::BoughtOut
+    );
+    let rug = test.client().get_rug(&test.rug_id);
+    assert_eq!(rug.owner, test.store);
+    assert_eq!(rug.status, RugStatus::Free);
+    assert_eq!(test.client().get_store(&test.store).open_principal, 0);
+    assert_eq!(test.client().get_credit(&test.investor), expected);
+    assert_eq!(test.balance(&test.investor), investor_before);
+    assert_eq!(
+        test.balance(&test.contract),
+        test.client().get_credit(&test.investor)
+    );
+}
+
+#[test]
+fn claim_credits_investor_when_transfer_fails() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let quote = test.client().quote(&(600 * USDC), &6);
+    let expected = quote.interest;
+    let investor_before = test.balance(&test.investor);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+
+    test.set_authorized(&test.investor, false);
+    test.set_time(end_at + config.buyout_window_seconds);
+    test.client().claim_rug(&loan_id);
+
+    assert_eq!(test.client().get_loan(&loan_id).status, LoanStatus::Claimed);
+    let rug = test.client().get_rug(&test.rug_id);
+    assert_eq!(rug.owner, test.investor);
+    assert_eq!(rug.status, RugStatus::Free);
+    let store = test.client().get_store(&test.store);
+    assert!(store.frozen);
+    assert_eq!(store.open_principal, 0);
+    assert_eq!(test.client().get_credit(&test.investor), expected);
+    assert_eq!(test.balance(&test.investor), investor_before);
+    assert_eq!(
+        test.balance(&test.contract),
+        test.client().get_credit(&test.investor)
+    );
+}
+
+#[test]
+fn conservation_counts_credit_as_held_by_contract() {
+    let test = TestEnv::new();
+    let holders = [
+        &test.admin,
+        &test.fee_recipient,
+        &test.store,
+        &test.weaver,
+        &test.investor,
+    ];
+    let total_before: i128 = holders.iter().map(|address| test.balance(address)).sum();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let quote = test.client().quote(&(600 * USDC), &6);
+
+    test.set_authorized(&test.investor, false);
+    test.client().repay(&loan_id);
+
+    let held: i128 = holders.iter().map(|address| test.balance(address)).sum();
+    let contract_balance = test.balance(&test.contract);
+    assert_eq!(held + contract_balance, total_before);
+    assert_eq!(contract_balance, quote.investor_payout);
+    assert_eq!(contract_balance, test.client().get_credit(&test.investor));
+
+    test.set_authorized(&test.investor, true);
+    test.client().withdraw_credit(&test.investor);
+
+    let held_after: i128 = holders.iter().map(|address| test.balance(address)).sum();
+    assert_eq!(held_after, total_before);
+    assert_eq!(test.balance(&test.contract), 0);
+    assert_eq!(test.client().get_credit(&test.investor), 0);
 }
 
 #[test]

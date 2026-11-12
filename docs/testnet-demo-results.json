@@ -1,7 +1,7 @@
 {
   "network": "testnet",
-  "generated_at": "2026-11-12T16:21:14.719433+00:00",
-  "contract": "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+  "generated_at": "2026-11-12T21:27:04.704019+00:00",
+  "contract": "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
   "usdc": "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
   "params": {
     "interest_bps_per_year": 1500,
@@ -38,19 +38,19 @@
         "investor_payout": 6450000000
       },
       "before": {
-        "admin": 30600000000,
-        "store": 282270000000,
-        "store2": 30030000000,
-        "weaver": 333510000000,
-        "investor": 283575000000,
+        "admin": 40780000000,
+        "store": 376375000000,
+        "store2": 40045000000,
+        "weaver": 444610000000,
+        "investor": 378175000000,
         "contract": 0
       },
       "after": {
-        "admin": 30660000000,
-        "store": 282360000000,
-        "store2": 30030000000,
-        "weaver": 332910000000,
-        "investor": 284025000000,
+        "admin": 40840000000,
+        "store": 376465000000,
+        "store2": 40045000000,
+        "weaver": 444010000000,
+        "investor": 378625000000,
         "contract": 0
       },
       "deltas": {
@@ -70,14 +70,14 @@
         {
           "action": "fund-repay",
           "hashes": [
-            "2f59ce43bc97542d0c635fdb22f2daf031776a152ab7cdd65ac735e8825e3797"
+            "fa7fd3d54ca135db406d336d72041306cdb4dfc8d14e6fa71a2677b9e791679c"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-investor",
             "--network",
@@ -93,14 +93,14 @@
         {
           "action": "repay-repay",
           "hashes": [
-            "04cce86ee442b248e3fbf2126ca42bbd6c29a2f06c79be5d040f0d105dfbb5ee"
+            "866abb08e14d7c4a2e1825591c871eb41b6faea3d9a77141b90cf5bc4b5586ba"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-weaver",
             "--network",
@@ -129,19 +129,19 @@
         "investor_payout": 6075000000
       },
       "before": {
-        "admin": 30660000000,
-        "store": 282360000000,
-        "store2": 30030000000,
-        "weaver": 332910000000,
-        "investor": 284025000000,
+        "admin": 40840000000,
+        "store": 376465000000,
+        "store2": 40045000000,
+        "weaver": 444010000000,
+        "investor": 378625000000,
         "contract": 0
       },
       "after": {
-        "admin": 30720000000,
-        "store": 276375000000,
-        "store2": 30030000000,
-        "weaver": 338760000000,
-        "investor": 284100000000,
+        "admin": 40900000000,
+        "store": 370480000000,
+        "store2": 40045000000,
+        "weaver": 449860000000,
+        "investor": 378700000000,
         "contract": 0
       },
       "deltas": {
@@ -161,14 +161,14 @@
         {
           "action": "fund-buyout",
           "hashes": [
-            "528d3b5f2166b2b1aae8cedb7b28437d2d52af9d51e6f4f03fa2232379d456e1"
+            "fb1772947f892e26492285c97a38d7b24c2d568391a7071af594e644e4ced4c6"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-investor",
             "--network",
@@ -184,14 +184,14 @@
         {
           "action": "store-buyout-buyout",
           "hashes": [
-            "b7c0b38e2538884f45233b5a279f597088cf5683b87f4a99c33afe4456a5fe8b"
+            "697744fad81f6cbddfc16eb647c37f59237d4d8f5941b1664b3efc49b5dc656c"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-store",
             "--network",
@@ -220,19 +220,19 @@
         "investor_payout": 6075000000
       },
       "before": {
-        "admin": 30720000000,
-        "store": 276375000000,
-        "store2": 30030000000,
-        "weaver": 338760000000,
-        "investor": 284100000000,
+        "admin": 40900000000,
+        "store": 370480000000,
+        "store2": 40045000000,
+        "weaver": 449860000000,
+        "investor": 378700000000,
         "contract": 0
       },
       "after": {
-        "admin": 30780000000,
-        "store": 276375000000,
-        "store2": 30045000000,
-        "weaver": 344610000000,
-        "investor": 278175000000,
+        "admin": 40960000000,
+        "store": 370480000000,
+        "store2": 40060000000,
+        "weaver": 455710000000,
+        "investor": 372775000000,
         "contract": 0
       },
       "deltas": {
@@ -252,14 +252,14 @@
         {
           "action": "fund-claim",
           "hashes": [
-            "8cda3c145b8a7397a7f09698312cc50ac85fc21b472fcb58631eb901e19a2d5f"
+            "ffd5a4bfa125b4a544f79bdb3eb736a876392c7987577abfff326fffffdc0ecf"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-investor",
             "--network",
@@ -275,14 +275,14 @@
         {
           "action": "claim-claim",
           "hashes": [
-            "6cffacedd2ff0d326cd929f0fa2d04ccd9b36fbb4ca2cc4d908a37662041c1f3"
+            "39e300ed2416adfffb6e88e87afbefef926ea9cfd675514a64599786a4f3a543"
           ],
           "command": [
             "stellar",
             "contract",
             "invoke",
             "--id",
-            "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+            "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J",
             "--source",
             "rd-investor",
             "--network",

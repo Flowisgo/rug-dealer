@@ -89,12 +89,14 @@ Notes:
 - The claim investor keeps the rug certificate and can redeem it with the store’s signature.
 - The `demo` command refuses to run a scenario if its store is already frozen; run `deploy` again for a fresh contract.
 
+The live demo exercises normal investor receipt. The deauthorized-investor credit fallback is covered by `cargo test`: `repay`, `store_buyout` and `claim_rug` still close the loan, record the exact credit, and `withdraw_credit` pays it once the investor can receive again.
+
 ## Current testnet deployment
 
 | Item | Value |
 |---|---|
-| Contract | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
-| Deploy ledger | `5,695,308` |
+| Contract | `CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J` |
+| Deploy ledger | `5,698,981` |
 | USDC SAC | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | USDC asset | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 | Admin / fee recipient | `GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ` |

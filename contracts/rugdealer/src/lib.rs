@@ -112,6 +112,7 @@ pub enum DataKey {
     Store(Address),
     Rug(u64),
     Loan(u64),
+    Credit(Address),
 }
 
 #[contracterror]
@@ -142,6 +143,7 @@ pub enum Error {
     WeaverIsStore = 22,
     StoreCannotBorrow = 23,
     InvestorIsParty = 24,
+    NothingToWithdraw = 25,
 }
 
 #[contractevent]
@@ -248,6 +250,21 @@ pub struct RugClaimed {
     pub interest: i128,
 }
 
+#[contractevent]
+pub struct InvestorCredited {
+    #[topic]
+    pub investor: Address,
+    pub loan_id: u64,
+    pub amount: i128,
+}
+
+#[contractevent]
+pub struct CreditWithdrawn {
+    #[topic]
+    pub investor: Address,
+    pub amount: i128,
+}
+
 #[contract]
 pub struct RugDealer;
 
@@ -349,6 +366,60 @@ fn is_registered_store(env: &Env, address: &Address) -> bool {
         .has(&DataKey::Store(address.clone()))
 }
 
+fn credit_balance(env: &Env, address: &Address) -> i128 {
+    let key = DataKey::Credit(address.clone());
+    let amount = env.storage().persistent().get(&key).unwrap_or(0);
+    if env.storage().persistent().has(&key) {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+    amount
+}
+
+fn set_credit(env: &Env, address: &Address, amount: i128) {
+    let key = DataKey::Credit(address.clone());
+    env.storage().persistent().set(&key, &amount);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn add_credit(env: &Env, address: &Address, amount: i128) -> Result<(), Error> {
+    let current = credit_balance(env, address);
+    let next = current.checked_add(amount).ok_or(Error::InvalidAmount)?;
+    set_credit(env, address, next);
+    Ok(())
+}
+
+fn pay_investor(
+    env: &Env,
+    usdc: &Address,
+    investor: &Address,
+    loan_id: u64,
+    amount: i128,
+) -> Result<(), Error> {
+    if amount <= 0 {
+        return Ok(());
+    }
+
+    let token = token::Client::new(env, usdc);
+    let paid = matches!(
+        token.try_transfer(&env.current_contract_address(), investor, &amount),
+        Ok(Ok(()))
+    );
+    if !paid {
+        add_credit(env, investor, amount)?;
+        InvestorCredited {
+            investor: investor.clone(),
+            loan_id,
+            amount,
+        }
+        .publish(env);
+    }
+    Ok(())
+}
+
 fn calculate_quote(cfg: &Config, principal: i128, months: u32) -> Result<Quote, Error> {
     if principal <= 0 {
         return Err(Error::InvalidAmount);
@@ -396,6 +467,7 @@ fn calculate_quote(cfg: &Config, principal: i128, months: u32) -> Result<Quote, 
 
 #[contractimpl]
 impl RugDealer {
+    #[allow(clippy::too_many_arguments)]
     pub fn __constructor(
         env: Env,
         admin: Address,
@@ -737,7 +809,7 @@ impl RugDealer {
         let usdc = token::Client::new(&env, &cfg.usdc);
         let contract = env.current_contract_address();
         usdc.transfer(&loan.weaver, &contract, &loan.principal);
-        usdc.transfer(&contract, &investor, &investor_payout);
+        pay_investor(&env, &cfg.usdc, &investor, loan_id, investor_payout)?;
 
         LoanRepaid {
             loan_id,
@@ -794,7 +866,7 @@ impl RugDealer {
         let usdc = token::Client::new(&env, &cfg.usdc);
         let contract = env.current_contract_address();
         usdc.transfer(&loan.store, &contract, &loan.principal);
-        usdc.transfer(&contract, &investor, &investor_payout);
+        pay_investor(&env, &cfg.usdc, &investor, loan_id, investor_payout)?;
 
         StoreBoughtOut {
             loan_id,
@@ -842,11 +914,7 @@ impl RugDealer {
         save_loan(&env, &loan);
 
         if loan.interest > 0 {
-            token::Client::new(&env, &cfg.usdc).transfer(
-                &env.current_contract_address(),
-                &investor,
-                &loan.interest,
-            );
+            pay_investor(&env, &cfg.usdc, &investor, loan_id, loan.interest)?;
         }
 
         StoreFrozen {
@@ -888,6 +956,26 @@ impl RugDealer {
         }
         .publish(&env);
         Ok(())
+    }
+
+    pub fn withdraw_credit(env: Env, investor: Address) -> Result<i128, Error> {
+        investor.require_auth();
+
+        let amount = credit_balance(&env, &investor);
+        if amount == 0 {
+            return Err(Error::NothingToWithdraw);
+        }
+
+        let cfg = config(&env);
+        let usdc = token::Client::new(&env, &cfg.usdc);
+        usdc.transfer(&env.current_contract_address(), &investor, &amount);
+        set_credit(&env, &investor, 0);
+        CreditWithdrawn { investor, amount }.publish(&env);
+        Ok(amount)
+    }
+
+    pub fn get_credit(env: Env, address: Address) -> i128 {
+        credit_balance(&env, &address)
     }
 
     pub fn get_config(env: Env) -> Config {
