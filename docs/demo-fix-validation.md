@@ -1,5 +1,7 @@
 # Demo-readiness fix validation
 
+> Historical evidence for local fix commit `6894d0bb4fb3bfb77d3ec735f7e7bec3a7f517be`. Commands, generator names and publication status below describe that branch at the time. See [integration validation](integration-validation.md) for the combined branch and current instructions.
+
 Date: 2026-11-12. Base fetched from `Flowisgo/rug-dealer` origin/main: **`4b187f4f126cde872ddd56ec30c2cde5d0aa94c8`**.
 
 Local branch: **`codex/demo-readiness-fixes`** in the separate `rug-dealer-demo-fixes` worktree. The complete `/private/tmp/rugdealer-review-4b187f4.md` report was available; all 12 findings were checked against the current code and addressed. No finding had to be recovered from incomplete conversation history. The original checkout and other worktrees were preserved. No push, deployment, or shared Testnet write was performed.
