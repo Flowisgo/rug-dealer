@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { BorrowForm, HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline } from "@/components/money";
@@ -7,7 +8,7 @@ import { ActionButton, Countdown, Empty, ErrorBox, KV, Loading, Party, RugTicket
 import { u64, type Loan, type Rug } from "@/lib/contract";
 import { ACCOUNTS } from "@/lib/deployment";
 import { rugNo, usdcLabel } from "@/lib/money";
-import { latestLoanFor, loanPhase, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
+import { borrowBlock, latestLoanFor, loanPhase, monthsText, openLoanFor, ROLE_TEXT, rugLabel, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { useBalance, useLedger, useNow, type Ledger } from "@/lib/use-ledger";
 
@@ -145,8 +146,25 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
         )}
       </div>
 
-      {rug.status === "Free" && <BorrowForm rug={rug} config={data.config} store={store} weaver={weaver} />}
-      {rug.status === "Free" && <HandoverPanel rug={rug} holder={weaver} />}
+      {rug.status === "Free" && borrowBlock(weaver, data.stores) ? (
+        <p className="notice small">
+          <strong>{ROLE_TEXT.storeCannotBorrow}</strong>{" "}
+          {rug.store === weaver ? (
+            <>
+              To close this rug's certificate, use <em>Close the certificate</em> on your <Link href="/store">store desk</Link>.
+            </>
+          ) : (
+            <>This desk is for weavers.</>
+          )}
+        </p>
+      ) : (
+        rug.status === "Free" && (
+          <>
+            <BorrowForm rug={rug} config={data.config} store={store} weaver={weaver} />
+            <HandoverPanel rug={rug} holder={weaver} />
+          </>
+        )
+      )}
 
       {loan?.status === "Requested" && (
         <>

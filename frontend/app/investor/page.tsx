@@ -6,7 +6,7 @@ import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
 import { addr, u64, type Loan, type Rug } from "@/lib/contract";
 import { rugNo, usdcLabel } from "@/lib/money";
-import { investorTotals, loanPhase, LOAN_STATUS_TEXT, monthsText, type Tone } from "@/lib/rules";
+import { investorTotals, lendBlock, loanPhase, LOAN_STATUS_TEXT, monthsText, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { useLedger, useNow, type Ledger } from "@/lib/use-ledger";
 
@@ -137,6 +137,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
 function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; investor: string; data: Ledger }) {
   const store = data.stores.find((s) => s.address === loan.store);
   const overLimit = !!store && store.open_principal > store.limit;
+  const party = lendBlock(investor, loan);
   return (
     <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="waiting">Waiting for an investor</Tag>}>
       <div className="ticket-meta">
@@ -165,11 +166,17 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
         Paid back by the weaver, or by the store if it buys the rug. Due {monthsText(loan.months)} after you fund it.
       </p>
       {overLimit && <p className="error-text">The store is over its limit, so this request can't be funded until other loans close.</p>}
+      {party && (
+        <p className="small">
+          <strong>{party}</strong> {investor === loan.weaver ? "This is your own request." : "This rug is from your store."} Another investor
+          has to fund it.
+        </p>
+      )}
       <ActionButton
         primary
         label={`Lend ${usdcLabel(loan.principal)}`}
         signer={investor}
-        disabled={overLimit}
+        disabled={overLimit || !!party}
         done="Funded. The weaver has been paid."
         run={(onStep) =>
           invoke({ source: investor, method: "fund_loan", args: [addr(investor), u64(loan.id)], label: `Fund ${rugNo(loan.rug_id)}` }, onStep)

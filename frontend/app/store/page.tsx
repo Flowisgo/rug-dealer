@@ -10,7 +10,7 @@ import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
 import { redeemOwnRug } from "@/lib/handover";
 import { formatLocal, parseUsdc, quoteLocally, rugNo } from "@/lib/money";
-import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
+import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, mintBlock, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { useLedger, useNow, type Ledger } from "@/lib/use-ledger";
 import { StrKey } from "@stellar/stellar-sdk";
@@ -257,7 +257,9 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
   const [price, setPrice] = useState("600");
 
   const weaver = who === "demo" ? ACCOUNTS.weaver : pasted.trim();
-  const weaverOk = StrKey.isValidEd25519PublicKey(weaver);
+  const weaverValid = StrKey.isValidEd25519PublicKey(weaver);
+  const weaverBlocked = weaverValid ? mintBlock(weaver, data.stores) : null;
+  const weaverOk = weaverValid && !weaverBlocked;
   const bytes = new TextEncoder().encode(description.trim()).length;
   const descOk = bytes >= 1 && bytes <= 280;
   const units = parseUsdc(price);
@@ -296,7 +298,12 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
               aria-invalid={pasted !== "" && !weaverOk}
               spellCheck={false}
             />
-            {pasted !== "" && !weaverOk && <span className="error-text">That isn't a Stellar account address (starts with G, 56 characters).</span>}
+            {pasted !== "" && !weaverValid && <span className="error-text">That isn't a Stellar account address (starts with G, 56 characters).</span>}
+            {weaverBlocked && (
+              <span className="error-text">
+                {weaverBlocked} <Party address={weaver} store /> is an approved store. Issue it to the weaver's own account.
+              </span>
+            )}
             <span className="hint">They'll need a USDC trustline to receive the loan.</span>
           </label>
         )}

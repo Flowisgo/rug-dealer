@@ -1,6 +1,6 @@
 // What a rug or loan means right now, in shopkeeper words. Pure functions so
 // they can be tested and shared by every screen.
-import type { Loan, Rug } from "./contract";
+import type { Loan, Rug, Store } from "./contract";
 
 export type Phase =
   | "requested" // waiting for an investor
@@ -38,6 +38,28 @@ export function rugLabel(rug: Rug, viewer?: string): { text: string; tone: Tone 
   if (viewer && rug.owner !== viewer) return { text: "Passed to a new holder", tone: "done" };
   return { text: "At the store, free to borrow", tone: "plain" };
 }
+
+// Who may take which part in a loan. The contract enforces the same rules
+// (errors 22-24); checking first lets the desks explain instead of failing.
+
+export const ROLE_TEXT = {
+  weaverIsStore: "A store can't be the weaver on a rug certificate.",
+  storeCannotBorrow: "Stores can't borrow against rugs.",
+  investorIsParty: "You can't lend on a loan you're part of.",
+} as const;
+
+/** Any approved store, frozen or not, as the contract counts it. */
+export const isStoreAddress = (address: string, stores: Store[]) => stores.some((s) => s.address === address);
+
+/** Why a certificate can't be issued to this weaver, or null if it can. */
+export const mintBlock = (weaver: string, stores: Store[]) => (isStoreAddress(weaver, stores) ? ROLE_TEXT.weaverIsStore : null);
+
+/** Why this account can't ask for a loan, or null if it can. */
+export const borrowBlock = (borrower: string, stores: Store[]) => (isStoreAddress(borrower, stores) ? ROLE_TEXT.storeCannotBorrow : null);
+
+/** Why this account can't fund this loan, or null if it can. */
+export const lendBlock = (investor: string, loan: Pick<Loan, "weaver" | "store">) =>
+  investor === loan.weaver || investor === loan.store ? ROLE_TEXT.investorIsParty : null;
 
 /** Latest loan on a rug (highest id). */
 export function latestLoanFor(rugId: bigint, loans: Loan[]): Loan | null {

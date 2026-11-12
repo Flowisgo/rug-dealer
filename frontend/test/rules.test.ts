@@ -3,7 +3,7 @@ import type { Loan, Rug } from "../lib/contract";
 import { CONTRACT_ID, USDC_ID } from "../lib/deployment";
 import { CONTRACT_ERRORS, explainError } from "../lib/errors";
 import { decodeHandover, encodeHandover } from "../lib/handover";
-import { clock, investorTotals, loanPhase, openLoanFor, rugLabel } from "../lib/rules";
+import { borrowBlock, clock, investorTotals, lendBlock, loanPhase, mintBlock, openLoanFor, ROLE_TEXT, rugLabel } from "../lib/rules";
 
 const loan = (over: Partial<Loan>): Loan => ({
   id: 1n,
@@ -53,6 +53,31 @@ describe("rug labels", () => {
     const loans = [loan({ id: 1n, status: "Repaid" }), loan({ id: 2n, status: "Funded" })];
     expect(openLoanFor(1n, loans)?.id).toBe(2n);
     expect(openLoanFor(9n, loans)).toBeNull();
+  });
+});
+
+describe("who may take which part (matches contract errors 22-24)", () => {
+  const stores = [
+    { address: "S", limit: 1n, open_principal: 0n, frozen: false },
+    { address: "S2", limit: 1n, open_principal: 0n, frozen: true },
+  ];
+  it("no certificate for any store, frozen ones included", () => {
+    expect(mintBlock("S", stores)).toBe(ROLE_TEXT.weaverIsStore);
+    expect(mintBlock("S2", stores)).toBe(ROLE_TEXT.weaverIsStore);
+    expect(mintBlock("W", stores)).toBeNull();
+  });
+  it("stores can't borrow; weavers and investors can", () => {
+    expect(borrowBlock("S", stores)).toBe(ROLE_TEXT.storeCannotBorrow);
+    expect(borrowBlock("W", stores)).toBeNull();
+    expect(borrowBlock("I", stores)).toBeNull();
+  });
+  it("only third parties lend: other stores and the platform may", () => {
+    const l = loan({ weaver: "W", store: "S" });
+    expect(lendBlock("W", l)).toBe(ROLE_TEXT.investorIsParty);
+    expect(lendBlock("S", l)).toBe(ROLE_TEXT.investorIsParty);
+    expect(lendBlock("S2", l)).toBeNull();
+    expect(lendBlock("ADMIN", l)).toBeNull();
+    expect(lendBlock("I", l)).toBeNull();
   });
 });
 
