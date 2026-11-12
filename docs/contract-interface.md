@@ -1,6 +1,6 @@
 # RugDealer contract interface
 
-Status: **milestone 2 (buy-out path)**. Testnet IDs are added in milestone 3.
+Status: **milestones 1–3 complete** — contract core, buy-out/claim path, and testnet deployment.
 
 The contract is a single Soroban contract at `contracts/rugdealer`. It records stores, rug certificates, loans, USDC payments, and settlement state. Rugs are **not** Stellar assets: each rug is an NFT-style record inside the contract with a contract-assigned `id`. USDC is a Stellar Asset Contract (SAC).
 
@@ -84,11 +84,15 @@ __constructor(
 
 Signer: none (runs at deployment). Stores `Config`, initializes `NextRugId = 1` and `NextLoanId = 1`.
 
+Invalid parameters abort deployment with `InvalidConfig`.
+
 ### `register_store(store, limit)`
 
 Signer: `admin`.
 
 Creates a store with a USDC principal limit. `limit` is the maximum outstanding principal in USDC base units. Fails with `StoreAlreadyRegistered` if the store already exists. Use `set_store_limit` to change it. Emits `store_registered`.
+
+Errors: `InvalidLimit`, `StoreAlreadyRegistered`.
 
 ### `set_store_limit(store, limit)`
 
@@ -96,11 +100,15 @@ Signer: `admin`.
 
 Updates an existing store’s principal limit. The limit may be lowered below current `open_principal`; existing loans are unaffected, but new requests and unfunded requests are refused until `open_principal <= limit`. Emits `store_limit_set`.
 
+Errors: `InvalidLimit`, `StoreNotRegistered`.
+
 ### `freeze_store(store)`
 
 Signer: `admin`.
 
 Sets `Store.frozen = true`. Freeze blocks **only `mint_rug`**. It does not block `request_loan` or `fund_loan`. Emits `store_frozen` with reason `Platform` on the first freeze. Idempotent.
+
+Errors: `StoreNotRegistered`.
 
 ### `mint_rug(store, weaver, description, price) -> rug_id`
 
@@ -114,6 +122,8 @@ Requirements:
 - description length is 1–280 bytes
 
 Emits `rug_minted`.
+
+Errors: `StoreNotRegistered`, `StoreFrozen`, `InvalidPrice`, `InvalidDescription`.
 
 ### `request_loan(weaver, rug_id, months) -> loan_id`
 
@@ -135,11 +145,15 @@ Effects:
 
 Emits `loan_requested`.
 
+Errors: `RugNotFound`, `NotRugOwner`, `RugNotFree`, `InvalidMonths`, `StoreNotRegistered`, `InvalidAmount`, `StoreLimitExceeded`.
+
 ### `cancel_request(loan_id)`
 
 Signer: `Loan.weaver`.
 
 Only valid while the loan is `Requested` (not funded). Returns the rug to `Free`, clears the store’s reserved principal, and marks the loan `Cancelled`. No fee is charged. Emits `loan_cancelled`.
+
+Errors: `LoanNotFound`, `LoanNotRequested`, `InvalidState`, `StoreNotRegistered`.
 
 ### `fund_loan(investor, loan_id)`
 
@@ -157,6 +171,8 @@ Effects:
 
 Emits `loan_funded` with the exact split and `end_at`.
 
+Errors: `LoanNotFound`, `LoanNotRequested`, `InvalidState`, `StoreNotRegistered`, `StoreLimitExceeded`, `InvalidAmount`.
+
 ### `repay(loan_id)`
 
 Signer: `Loan.weaver`.
@@ -171,6 +187,8 @@ Effects:
 - loan status `Repaid`
 
 Emits `loan_repaid`.
+
+Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
 
 ### `store_buyout(loan_id)`
 
@@ -193,6 +211,8 @@ Effects:
 
 Emits `store_bought_out`. The store and platform fees were already paid at funding and are not refunded.
 
+Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `TooEarly`, `BuyoutWindowClosed`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
+
 ### `claim_rug(loan_id)`
 
 Signer: `Loan.investor`.
@@ -214,6 +234,8 @@ Effects:
 
 Emits `rug_claimed` and emits `store_frozen` with reason `MissedBuyout` to flag the missed buy-out.
 
+Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `BuyoutWindowOpen`, `InvalidState`, `StoreNotRegistered`, `InvalidAmount`.
+
 ### `redeem(holder, rug_id)`
 
 Signers: `holder` and `Rug.store`.
@@ -222,16 +244,22 @@ Only valid when `Rug.owner == holder` and `Rug.status == Free`. Marks the rug `R
 
 Emits `rug_redeemed`.
 
+Errors: `RugNotFound`, `NotRugOwner`, `RugNotFree`.
+
 ### Views
 
+Views require no auth.
+
 - `get_config() -> Config`
-- `get_store(store: Address) -> Store`
-- `get_rug(rug_id: u64) -> Rug`
-- `get_loan(loan_id: u64) -> Loan`
+- `get_store(store: Address) -> Store` — `StoreNotRegistered` if missing
+- `get_rug(rug_id: u64) -> Rug` — `RugNotFound` if missing
+- `get_loan(loan_id: u64) -> Loan` — `LoanNotFound` if missing
 - `next_rug_id() -> u64` — the id that the next `mint_rug` will use
 - `next_loan_id() -> u64` — the id that the next `request_loan` will use
-- `quote(principal: i128, months: u32) -> Quote` — pure fee calculation using the stored config
-- `is_overdue(loan_id: u64) -> bool` — true only while the loan is `Funded` and `now >= end_at`; overdue is derived, never stored
+- `quote(principal: i128, months: u32) -> Quote` — pure fee calculation using the stored config; `InvalidAmount` or `InvalidMonths`
+- `is_overdue(loan_id: u64) -> bool` — true only while the loan is `Funded` and `now >= end_at`; overdue is derived, never stored; `LoanNotFound` if missing
+
+Auth failures from `require_auth` are Soroban host errors (for example `Error(Auth, InvalidAction)`), not contract error codes. A call with the wrong signer fails before the contract can return one of the errors above.
 
 ## Settlement windows
 
@@ -388,17 +416,42 @@ Milestone 2:
 
 ## Testnet deployment
 
-To be added in milestone 3:
+Deployed and exercised on Stellar Testnet on 2026-11-12.
+
+| Item | Value |
+|---|---|
+| Network | `testnet` |
+| Contract ID | `CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG` |
+| USDC SAC address | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
+| USDC classic asset | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
+| USDC issuer | `GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
+| Platform admin + fee recipient | `GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ` |
+| Main demo store | `GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN` |
+| Claim-demo store (frozen after the claim scenario) | `GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ` |
+| Demo weaver | `GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF` |
+| Demo investor | `GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W` |
+
+Deployment parameters:
 
 ```text
-network:            testnet
-contract id:        TBD
-USDC SAC address:   TBD
-admin public key:   TBD
-fee recipient:      TBD
-demo store key:     TBD
-demo weaver key:    TBD
-demo investor key:  TBD
+interest_bps_per_year:     1500
+platform_fee_bps:          100 (once)
+store_fee_bps_per_month:   25
+max_months:                12
+month_seconds:             60
+buyout_window_seconds:     60
+store limit (each store):  5000.0000000 USDC
+demo rug price:            600.0000000 USDC
 ```
 
-Only public keys are recorded here. Secret keys stay outside the repository.
+The main store is still active. `store2` was frozen by the claim scenario, as designed. The 60-second month means the buy-out window opens 60 seconds after funding and the claim window opens 60 seconds after that.
+
+Public deployment data:
+
+- `docs/testnet-deployment.json` — contract, USDC, public keys, parameters, transaction hashes
+- `docs/testnet-demo-results.json` — exact balance deltas and final loan/rug state for the repay, buy-out, and claim scenarios
+- `docs/testnet-demo.md` — deployment/demo runbook, script commands, and the current public testnet addresses
+- `https://stellar.expert/explorer/testnet/contract/CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG`
+
+Secret keys are **not** in this repository. The demo identities live in the Stellar CLI config directory `~/.rugdealer-demo/config` (created by `scripts/testnet.py`). Only public keys are recorded here.
+

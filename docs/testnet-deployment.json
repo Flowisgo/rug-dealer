@@ -1,0 +1,226 @@
+{
+  "network": "testnet",
+  "deployed_at": "2026-11-12T06:36:40.432976+00:00",
+  "contract": "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+  "usdc": "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+  "usdc_asset": "USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
+  "usdc_issuer": "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
+  "accounts": {
+    "admin": "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",
+    "issuer": "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
+    "store": "GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN",
+    "store2": "GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ",
+    "weaver": "GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF",
+    "investor": "GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W"
+  },
+  "params": {
+    "interest_bps_per_year": 1500,
+    "platform_fee_bps": 100,
+    "store_fee_bps_per_month": 25,
+    "max_months": 12,
+    "month_seconds": 60,
+    "buyout_window_seconds": 60,
+    "store_limit": 50000000000,
+    "rug_price": 6000000000
+  },
+  "wasm_sha256": "2af65c1a8cba1311ed37cea32cb2ca85710ffad6ccd71fbb4c56b3f768aa7060",
+  "transactions": [
+    {
+      "action": "mint-usdc-admin",
+      "hashes": [
+        "9ba8e860857a798af50cd3ea5233c5ae29cb2d631726508ff069caa3a3bf949f"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--source",
+        "rd-issuer",
+        "--network",
+        "testnet",
+        "--",
+        "mint",
+        "--to",
+        "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",
+        "--amount",
+        "10000000000"
+      ]
+    },
+    {
+      "action": "mint-usdc-store",
+      "hashes": [
+        "813990fc55caca00fdaf71a2ff6eb8bee52da4e7cd914dd049660d99e0cba183"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--source",
+        "rd-issuer",
+        "--network",
+        "testnet",
+        "--",
+        "mint",
+        "--to",
+        "GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN",
+        "--amount",
+        "100000000000"
+      ]
+    },
+    {
+      "action": "mint-usdc-store2",
+      "hashes": [
+        "5fbcb68f6bff8fc4a7fa6e62b027d4266d3d2faa748b27ee0ac45fca4bd6092c"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--source",
+        "rd-issuer",
+        "--network",
+        "testnet",
+        "--",
+        "mint",
+        "--to",
+        "GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ",
+        "--amount",
+        "10000000000"
+      ]
+    },
+    {
+      "action": "mint-usdc-weaver",
+      "hashes": [
+        "174b676046079e324ab7966f59c1df76c7dbf31780bbf3b4d0598f2611dc0483"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--source",
+        "rd-issuer",
+        "--network",
+        "testnet",
+        "--",
+        "mint",
+        "--to",
+        "GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF",
+        "--amount",
+        "100000000000"
+      ]
+    },
+    {
+      "action": "mint-usdc-investor",
+      "hashes": [
+        "4078e75bfefebf9524f34814e1cf924e0877ea814477a002b9d926a2e8357f98"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--source",
+        "rd-issuer",
+        "--network",
+        "testnet",
+        "--",
+        "mint",
+        "--to",
+        "GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W",
+        "--amount",
+        "100000000000"
+      ]
+    },
+    {
+      "action": "deploy-contract",
+      "hashes": [
+        "09b5c88699ac9214d1843db5901d3a299fe8387ac3a6535cb10661146b7866b0"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "deploy",
+        "--wasm",
+        "C:\\Users\\User\\rug-dealer\\target\\wasm32v1-none\\release\\rugdealer.wasm",
+        "--source",
+        "rd-admin",
+        "--network",
+        "testnet",
+        "--",
+        "--admin",
+        "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",
+        "--usdc",
+        "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
+        "--fee_recipient",
+        "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",
+        "--interest_bps_per_year",
+        "1500",
+        "--platform_fee_bps",
+        "100",
+        "--store_fee_bps_per_month",
+        "25",
+        "--max_months",
+        "12",
+        "--month_seconds",
+        "60",
+        "--buyout_window_seconds",
+        "60"
+      ]
+    },
+    {
+      "action": "register-store",
+      "hashes": [
+        "49f4194c6d773fd345a849b52c6fbbda00df59fe58c68d01bdff6be4d0ce67a3"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+        "--source",
+        "rd-admin",
+        "--network",
+        "testnet",
+        "--",
+        "register_store",
+        "--store",
+        "GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN",
+        "--limit",
+        "50000000000"
+      ]
+    },
+    {
+      "action": "register-store2",
+      "hashes": [
+        "90a1211ab338da56a47d14c969b1b2dd048345adf16d062752be6401a99d0f1d"
+      ],
+      "command": [
+        "stellar",
+        "contract",
+        "invoke",
+        "--id",
+        "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+        "--source",
+        "rd-admin",
+        "--network",
+        "testnet",
+        "--",
+        "register_store",
+        "--store",
+        "GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ",
+        "--limit",
+        "50000000000"
+      ]
+    }
+  ]
+}

@@ -4,6 +4,10 @@ target/
 # Soroban test snapshots
 test_snapshots/
 
+# Python cache
+__pycache__/
+*.pyc
+
 # Stellar/Soroban local state and keys
 .soroban/
 .stellar/
