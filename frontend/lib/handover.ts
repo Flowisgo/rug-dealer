@@ -7,6 +7,7 @@ import {
   Address,
   BASE_FEE,
   Operation,
+  StrKey,
   TransactionBuilder,
   authorizeEntry,
   rpc,
@@ -45,15 +46,27 @@ export type HandoverCheck =
   | "wrong-store" // the code names another store than the rug's
   | "handed-over" // the rug is already Redeemed: nothing more to do
   | "not-holder" // the code's holder no longer holds the rug
-  | "ready"; // the store can sign and submit
+  | "pledged" // the rug backs a loan request or a running loan: it must stay in the store
+  | "expired" // the holder's signature has run out; they must sign again
+  | "ready"; // the rug is free and the signature is live: the store can sign
 
-/** What the store should see for a hand-over code, given the rug's current record. */
-export function checkHandover(h: Handover, rug: Rug | undefined): HandoverCheck {
+/** True once the ledger has passed the last one the holder's signature covers. */
+export const isExpired = (h: Pick<Handover, "until">, latestLedger: number) => latestLedger > h.until;
+
+/**
+ * What the store should see for a hand-over code, given the rug's current
+ * record and, when known, the latest ledger. Only a free rug with a live
+ * signature is "ready": the contract refuses anything else, and the store
+ * must never be told to release a rug that is pledged for a loan.
+ */
+export function checkHandover(h: Handover, rug: Rug | undefined, latestLedger?: number): HandoverCheck {
   if (h.contract !== CONTRACT_ID) return "old-contract";
   if (!rug) return "unknown-rug";
   if (rug.store !== h.store) return "wrong-store";
   if (rug.status === "Redeemed") return "handed-over";
   if (rug.owner !== h.holder) return "not-holder";
+  if (rug.status !== "Free") return "pledged";
+  if (latestLedger !== undefined && isExpired(h, latestLedger)) return "expired";
   return "ready";
 }
 
@@ -97,16 +110,44 @@ export function encodeHandover(h: Handover): string {
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** Every field is checked here, so nothing downstream can trip over a bad code. */
+function validHandover(x: unknown): x is Handover {
+  if (!x || typeof x !== "object") return false;
+  const h = x as Record<string, unknown>;
+  if (h.v !== 1) return false;
+  if (typeof h.rug !== "string" || !/^[1-9]\d{0,19}$/.test(h.rug) || BigInt(h.rug) > 18446744073709551615n) return false;
+  if (typeof h.holder !== "string" || !StrKey.isValidEd25519PublicKey(h.holder)) return false;
+  if (typeof h.store !== "string" || !StrKey.isValidEd25519PublicKey(h.store)) return false;
+  if (typeof h.until !== "number" || !Number.isInteger(h.until) || h.until <= 0) return false;
+  if (h.contract !== undefined && typeof h.contract !== "string") return false;
+  if (!Array.isArray(h.auth) || h.auth.length === 0 || h.auth.length > 8) return false;
+  return h.auth.every((a) => {
+    if (typeof a !== "string") return false;
+    try {
+      xdr.SorobanAuthorizationEntry.fromXDR(a, "base64");
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function decodeHandover(code: string): Handover {
+  let parsed: unknown;
   try {
     const b64 = code.trim().replace(/-/g, "+").replace(/_/g, "/");
     const bytes = Uint8Array.from(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)), (c) => c.charCodeAt(0));
-    const h = JSON.parse(new TextDecoder().decode(bytes)) as Handover;
-    if (h.v !== 1 || !h.rug || !h.holder || !h.store || !Array.isArray(h.auth)) throw new Error();
-    return h;
+    parsed = JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    throw new AppError("This hand-over code isn't valid. Ask the holder to send the link again.");
+    parsed = null;
   }
+  if (!validHandover(parsed)) throw new AppError("This hand-over code isn't valid. Ask the holder to send the link again.");
+  return parsed;
+}
+
+/** The latest ledger, for checking whether a hand-over signature is still live. */
+export async function latestLedger(): Promise<number> {
+  return (await server().getLatestLedger()).sequence;
 }
 
 /** Holder side: sign the holder's part of the hand-over. */
@@ -121,8 +162,7 @@ export async function signHandover(holder: string, rugId: bigint, store: string)
   const sim = await server().simulateTransaction(tx);
   if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error);
   if (!rpc.Api.isSimulationSuccess(sim) || !sim.result) throw explainError("");
-  const latest = await server().getLatestLedger();
-  const until = latest.sequence + VALID_LEDGERS;
+  const until = (await latestLedger()) + VALID_LEDGERS;
   const auth: string[] = [];
   let signed = false;
   for (const entry of sim.result.auth) {
@@ -145,8 +185,7 @@ export async function signHandover(holder: string, rugId: bigint, store: string)
 
 /** Store side: co-sign and submit a holder's hand-over. */
 export async function submitHandover(h: Handover, onStep?: (s: TxStep) => void): Promise<TxResult> {
-  const latest = await server().getLatestLedger();
-  if (latest.sequence > h.until) throw new AppError("This hand-over code has expired. Ask the holder to sign again.");
+  if (isExpired(h, await latestLedger())) throw new AppError("This hand-over code has expired. Ask the holder to sign again.");
   return invoke(
     {
       source: h.store,

@@ -68,13 +68,37 @@ export async function waitFor(hash: string, attempts = 30): Promise<rpc.Api.GetT
   return res;
 }
 
+/** Transactions are built to expire after this; one not found well past it never landed. */
+const TX_TIMEOUT_SECONDS = 180;
+const EXPIRED_AFTER_MS = (TX_TIMEOUT_SECONDS + 60) * 1000;
+
+export type PendingStatus = "SUCCESS" | "FAILED" | "NOT_FOUND" | "EXPIRED";
+
+/** What a saved pending transaction means now, from the network's answer and
+ * its age. "NOT_FOUND" is the only status that should block a new action. */
+export function pendingOutcome(networkStatus: string, ageMs: number): { status: PendingStatus; clear: boolean } {
+  if (networkStatus === "SUCCESS" || networkStatus === "FAILED") return { status: networkStatus, clear: true };
+  if (ageMs > EXPIRED_AFTER_MS) return { status: "EXPIRED", clear: true };
+  return { status: "NOT_FOUND", clear: false };
+}
+
 /** Look up a pending transaction left by an earlier page load. */
-export async function resumePending(): Promise<{ pending: Pending; status: "SUCCESS" | "FAILED" | "NOT_FOUND" } | null> {
+export async function resumePending(): Promise<{ pending: Pending; status: PendingStatus } | null> {
   const p = loadPending();
   if (!p) return null;
   const r = await server().getTransaction(p.hash);
-  if (r.status !== "NOT_FOUND" || Date.now() - p.at > 5 * 60_000) clearPending();
-  return { pending: p, status: r.status as "SUCCESS" | "FAILED" | "NOT_FOUND" };
+  const o = pendingOutcome(r.status, Date.now() - p.at);
+  if (o.clear) clearPending();
+  return { pending: p, status: o.status };
+}
+
+/** Refuse to start a new transaction while an earlier one may still land:
+ * one pending record at a time, never overwritten. */
+async function ensureNothingPending() {
+  if (!loadPending()) return;
+  const r = await resumePending();
+  if (r?.status === "NOT_FOUND")
+    throw new AppError("An earlier transaction is still waiting for the network. Give it a minute, then refresh.", undefined, "network");
 }
 
 async function signSendConfirm(tx: Transaction, source: string, label: string, onStep: (s: TxStep) => void): Promise<TxResult> {
@@ -133,11 +157,7 @@ export type ContractCall = {
 /** Run one contract call signed by `source`. Always simulates first. */
 export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
   onStep("checking");
-  if (loadPending()) {
-    const r = await resumePending();
-    if (r && r.status === "NOT_FOUND")
-      throw new AppError("An earlier transaction is still waiting for the network. Give it a minute, then refresh.", undefined, "network");
-  }
+  await ensureNothingPending();
   await assertSigner(call.source);
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -148,7 +168,7 @@ export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = (
       .addOperation(
         Operation.invokeContractFunction({ contract: CONTRACT_ID, function: call.method, args: call.args, auth: call.auth ?? [] }),
       )
-      .setTimeout(180)
+      .setTimeout(TX_TIMEOUT_SECONDS)
       .build();
     const sim = await server().simulateTransaction(tx);
     if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error);
@@ -165,11 +185,12 @@ export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = (
 /** Add a USDC trustline so the wallet can hold test USDC. */
 export async function addUsdcTrustline(source: string, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
   onStep("checking");
+  await ensureNothingPending();
   await assertSigner(source);
   const account = await server().getAccount(source);
   const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
     .addOperation(Operation.changeTrust({ asset: new Asset(USDC_CODE, USDC_ISSUER) }))
-    .setTimeout(180)
+    .setTimeout(TX_TIMEOUT_SECONDS)
     .build();
   return signSendConfirm(tx, source, "Add USDC to wallet", onStep);
 }

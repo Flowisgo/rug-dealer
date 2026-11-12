@@ -21,8 +21,9 @@ A weaver often needs cash the day a rug comes off the loom. A real buyer may pay
    - **Weaver repays.** The weaver pays back the loan amount, collects the rug and can sell it to a real buyer whenever one turns up.
    - **Weaver doesn't repay.** The store must buy the rug at the same price within 7 days of the end date, and the investor is paid from that.
    - **Weaver repays late.** Until the store's payment lands, the weaver can still repay.
+   - **The store misses its buy-out too.** The store is frozen, and the investor takes the rug and the interest instead of the loan amount.
 
-Either way, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
+When the weaver repays or the store buys, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
 
 ### Worked example
 
@@ -91,7 +92,7 @@ The app has five pages: **Store**, **Weaver**, **Investor**, **Platform** and **
 | 4a | Weaver | **Repay 600.00 USDC**, then **Collect the rug** and send the link to the store |
 | 4b | Store, once the loan is overdue | **Buy the rug for 600.00 USDC** |
 | 4c | Investor, once the store's window has closed | **Take the rug** |
-| 5 | Store | Open the weaver's link → **Sign and hand over** |
+| 5 | Store | Open the weaver's link → **Sign to close the certificate**, then hand the rug over once it's confirmed |
 
 In this demo deployment, **1 loan month is 60 seconds** and the store's buy-out window is also 60 seconds. A whole loan therefore plays out in a few minutes.
 

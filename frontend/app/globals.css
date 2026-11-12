@@ -1066,6 +1066,11 @@ a.entry-no:hover {
     grid-template-columns: 1fr 1fr;
   }
 }
+@media (min-width: 1060px) {
+  .outcomes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 
 /* Desks: plain rows, one per role. */
 .desks {

@@ -73,10 +73,12 @@ function PendingNotice() {
       ? "went through."
       : p.status === "FAILED"
         ? "failed. Nothing changed; you can try again."
-        : "is still waiting for the network. Refresh in a minute.";
+        : p.status === "EXPIRED"
+          ? "never reached the network, so nothing changed. You can try again."
+          : "is still waiting for the network. Refresh in a minute.";
   return (
     <div style={{ maxWidth: "var(--max)", margin: "12px auto 0", padding: "0 var(--gutter)" }}>
-      <div className={p.status === "FAILED" ? "notice warn" : "notice"} role="status">
+      <div className={p.status === "FAILED" || p.status === "EXPIRED" ? "notice warn" : "notice"} role="status">
         Your last action ({p.pending.label}) {text}{" "}
         <a href={txUrl(p.pending.hash)} target="_blank" rel="noreferrer">
           Check it

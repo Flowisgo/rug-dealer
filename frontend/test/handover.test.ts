@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Rug } from "../lib/contract";
 import { decodeNative, findRedeem, type AppEvent } from "../lib/events";
 import { CONTRACT_ID } from "../lib/deployment";
-import { checkHandover, forgetHandedOver, handoverKey, type Handover } from "../lib/handover";
+import { Address, xdr } from "@stellar/stellar-sdk";
+import { checkHandover, decodeHandover, encodeHandover, forgetHandedOver, handoverKey, isExpired, type Handover } from "../lib/handover";
+import { pendingOutcome } from "../lib/tx";
 
 const STORE = "GSTORE";
 const WEAVER = "GWEAVER";
@@ -23,6 +25,62 @@ describe("what the store sees for a hand-over code", () => {
   it("wrong store", () => expect(checkHandover(code, rug({ store: "GOTHER" }))).toBe("wrong-store"));
   it("holder changed (e.g. the store bought the rug since)", () => expect(checkHandover(code, rug({ owner: STORE }))).toBe("not-holder"));
   it("wrong store wins over handed over", () => expect(checkHandover(code, rug({ store: "GOTHER", status: "Redeemed" }))).toBe("wrong-store"));
+  it("never ready while the rug is pledged for a loan: the store must keep it", () => {
+    expect(checkHandover(code, rug({ status: "Requested" }))).toBe("pledged");
+    expect(checkHandover(code, rug({ status: "Locked" }))).toBe("pledged");
+    expect(checkHandover(code, rug({ status: "Locked" }), 0)).toBe("pledged");
+  });
+  it("expired once the ledger passes the signature's last ledger", () => {
+    const c = { ...code, until: 100 };
+    expect(checkHandover(c, rug(), 100)).toBe("ready");
+    expect(checkHandover(c, rug(), 101)).toBe("expired");
+    expect(isExpired(c, 101)).toBe(true);
+    expect(isExpired(c, 99)).toBe(false);
+  });
+});
+
+describe("decoding a hand-over code", () => {
+  const A = "GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF";
+  const B = "GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN";
+  const entry = new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+    rootInvocation: new xdr.SorobanAuthorizedInvocation({
+      function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+        new xdr.InvokeContractArgs({ contractAddress: Address.fromString(CONTRACT_ID).toScAddress(), functionName: "redeem", args: [] }),
+      ),
+      subInvocations: [],
+    }),
+  }).toXDR("base64");
+  const good: Handover = { v: 1, rug: "7", holder: A, store: B, auth: [entry], until: 5_700_000, contract: CONTRACT_ID };
+  const enc = (h: unknown) => encodeHandover(h as Handover);
+
+  it("round-trips a real code", () => expect(decodeHandover(encodeHandover(good))).toEqual(good));
+  it.each([
+    ["a rug number that isn't a number", { ...good, rug: "abc" }],
+    ["rug number zero", { ...good, rug: "0" }],
+    ["a holder that isn't an account", { ...good, holder: "GA" }],
+    ["a store that isn't an account", { ...good, store: 42 }],
+    ["no auth entries", { ...good, auth: [] }],
+    ["an auth entry that isn't XDR", { ...good, auth: ["not xdr"] }],
+    ["a non-integer expiry", { ...good, until: 1.5 }],
+    ["the wrong version", { ...good, v: 2 }],
+  ])("rejects %s with a plain error, never a crash", (_, bad) => {
+    expect(() => decodeHandover(enc(bad))).toThrow(/isn't valid/);
+  });
+  it("rejects text that isn't a code at all", () => expect(() => decodeHandover("not a code")).toThrow(/isn't valid/));
+});
+
+describe("a pending transaction left by an earlier page load", () => {
+  it("blocks new actions only while it may still land", () => {
+    expect(pendingOutcome("NOT_FOUND", 30_000)).toEqual({ status: "NOT_FOUND", clear: false });
+  });
+  it("is cleared and reported once it landed or failed", () => {
+    expect(pendingOutcome("SUCCESS", 1_000)).toEqual({ status: "SUCCESS", clear: true });
+    expect(pendingOutcome("FAILED", 1_000)).toEqual({ status: "FAILED", clear: true });
+  });
+  it("is cleared as expired, not 'still waiting', once past its time limit", () => {
+    expect(pendingOutcome("NOT_FOUND", 10 * 60_000)).toEqual({ status: "EXPIRED", clear: true });
+  });
 });
 
 describe("clearing saved hand-over codes", () => {

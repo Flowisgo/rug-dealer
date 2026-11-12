@@ -137,11 +137,13 @@ describe("contract errors", () => {
 });
 
 describe("hand-over codes", () => {
-  it("round-trip through the link format", () => {
+  it("encode to link-safe characters", () => {
     const h = { v: 1 as const, rug: "3", holder: "GA", store: "GB", auth: ["AAAA", "BBBB"], until: 123 };
-    const code = encodeHandover(h);
-    expect(code).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(decodeHandover(code)).toEqual(h);
+    expect(encodeHandover(h)).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+  it("refuse placeholder accounts and auth (real round-trips are in handover.test.ts)", () => {
+    const h = { v: 1 as const, rug: "3", holder: "GA", store: "GB", auth: ["AAAA", "BBBB"], until: 123 };
+    expect(() => decodeHandover(encodeHandover(h))).toThrow(/isn't valid/);
   });
   it("rejects garbage", () => {
     expect(() => decodeHandover("not a code")).toThrow(/isn't valid/);

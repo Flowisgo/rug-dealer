@@ -57,7 +57,7 @@ export default function Home() {
           <h1 className="hero-title">Leave the rug at the store. Borrow its price today.</h1>
           <p className="hero-lede">
             A weaver borrows what the store would pay for a finished rug. Repay, and the rug is theirs to sell to a real buyer for a better
-            price. If they don't, the store buys the rug at that price. The investor is paid either way.
+            price. If they don't, the store buys the rug at that price and the investor is repaid from it.
           </p>
           <div className="btn-row hero-actions">
             {w.address ? (
@@ -146,6 +146,26 @@ export default function Home() {
                 <dt>Investor</dt>
                 <dd>
                   Gets back <MoneyInline units={EXAMPLE.investor_payout} />.
+                </dd>
+              </div>
+            </dl>
+          </article>
+          <article className="outcome">
+            <h3>The store misses its buy-out too</h3>
+            <p>If the store doesn't pay within its 7 days, the investor can take the rug instead.</p>
+            <dl>
+              <div>
+                <dt>Weaver</dt>
+                <dd>Keeps the {usd(EXAMPLE.weaver_payout)} and owes nothing more.</dd>
+              </div>
+              <div>
+                <dt>Store</dt>
+                <dd>Is frozen: it can't issue new certificates, and investors see the flag.</dd>
+              </div>
+              <div>
+                <dt>Investor</dt>
+                <dd>
+                  Takes the rug and the {usd(EXAMPLE.interest)} interest. The {usd(EXAMPLE.principal)} isn't paid back; the rug stands in for it.
                 </dd>
               </div>
             </dl>

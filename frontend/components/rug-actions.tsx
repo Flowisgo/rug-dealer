@@ -10,6 +10,8 @@ import {
   decodeHandover,
   encodeHandover,
   handoverKey,
+  isExpired,
+  latestLedger,
   signHandover,
   submitHandover,
   type Handover,
@@ -97,10 +99,28 @@ export function BorrowForm({ rug, config, store, weaver }: { rug: Rug; config: C
   );
 }
 
+/** The latest ledger, refreshed every minute; undefined until first read. */
+function useLatestLedger(): number | undefined {
+  const [seq, setSeq] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    const read = () => latestLedger().then((s) => alive && setSeq(s), () => {});
+    read();
+    const t = setInterval(read, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+  return seq;
+}
+
 /** Holder signs their half of a rug hand-over and gets a link for the store. */
 export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   const check = useSignerCheck(holder);
+  const latest = useLatestLedger();
   const [h, setH] = useState<Handover | null>(null);
+  const [expired, setExpired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -112,8 +132,25 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
         const d = decodeHandover(saved);
         if (d.holder === holder) setH(d);
       }
-    } catch {}
+    } catch {
+      // A saved code that no longer decodes is useless: drop it.
+      try {
+        localStorage.removeItem(handoverKey(rug.id));
+      } catch {}
+    }
   }, [rug.id, holder]);
+
+  // A saved code whose signature has run out can't be used: drop it and ask
+  // the holder to sign again.
+  useEffect(() => {
+    if (h && latest !== undefined && isExpired(h, latest)) {
+      setH(null);
+      setExpired(true);
+      try {
+        localStorage.removeItem(handoverKey(rug.id));
+      } catch {}
+    }
+  }, [h, latest, rug.id]);
 
   const sign = async () => {
     setBusy(true);
@@ -121,6 +158,8 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
     try {
       const d = await signHandover(holder, rug.id, rug.store);
       setH(d);
+      setExpired(false);
+      setCopied(null);
       try {
         localStorage.setItem(handoverKey(rug.id), encodeHandover(d));
       } catch {}
@@ -139,11 +178,13 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
     return (
       <div>
         <p className="small muted" style={{ marginBottom: 10 }}>
-          Collecting needs two signatures: yours, then the store's when it hands you the rug. The certificate is then closed for good.
+          {expired
+            ? "Your last signature for this rug expired before the store used it. Sign again to send the store a new link."
+            : "Collecting needs two signatures: yours, then the store's. The store hands you the rug once its signature is confirmed, and the certificate is closed for good."}
         </p>
         <div className="btn-row">
           <button className="btn" onClick={() => void sign()} disabled={busy || !check.ok}>
-            {busy ? "Waiting for Varial…" : "Collect the rug"}
+            {busy ? "Waiting for Varial…" : expired ? "Sign again" : "Collect the rug"}
           </button>
         </div>
         {!check.ok && check.hint && <p className="small muted" style={{ marginTop: 6 }}>{check.hint}</p>}
@@ -154,8 +195,8 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   return (
     <div className="notice">
       <p style={{ marginBottom: 8 }}>
-        <strong>Your part is signed.</strong> Give this link to <Party address={rug.store} store />. They open it on their store desk, hand you
-        the rug and sign. It works for about a day.
+        <strong>Your part is signed.</strong> Give this link to <Party address={rug.store} store />. They sign on their store desk, and hand
+        you the rug once the network confirms it. The link works for about a day.
       </p>
       <div className="btn-row" style={{ marginBottom: 8 }}>
         <button className="btn" onClick={() => copy("link", link)}>
@@ -164,7 +205,11 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
         <button className="btn btn-quiet" onClick={() => copy("code", code)}>
           {copied === "code" ? "Code copied" : "Copy code only"}
         </button>
+        <button className="btn btn-quiet" onClick={() => void sign()} disabled={busy || !check.ok}>
+          {busy ? "Waiting for Varial…" : "Sign again"}
+        </button>
       </div>
+      {err && <p className="error-text" style={{ marginBottom: 8 }}>{err}</p>}
       <details>
         <summary className="small">Show the code</summary>
         <textarea className="input code-box" readOnly value={code} aria-label="Hand-over code" />
@@ -173,12 +218,13 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   );
 }
 
-/** Success state after a hand-over is signed and confirmed. Indigo, not green. */
+/** Success state after a certificate is closed. For the store co-signing a
+ * collection, this is the cue to release the rug. */
 export function HandedOver({ rugId, holder, hash, self = false }: { rugId: bigint; holder: string; hash: string; self?: boolean }) {
   return (
     <div className="handed-over" role="status">
       <p className="handed-over-title">
-        Rug handed over. Certificate <span className="mono">{rugNo(rugId)}</span> is closed.
+        Certificate <span className="mono">{rugNo(rugId)}</span> is closed.
       </p>
       <p>
         {self ? (
@@ -187,7 +233,7 @@ export function HandedOver({ rugId, holder, hash, self = false }: { rugId: bigin
           </>
         ) : (
           <>
-            Collected by <Party address={holder} />.
+            Confirmed on the network. You can now hand the rug to <Party address={holder} />.
           </>
         )}
       </p>
@@ -236,8 +282,9 @@ export function CoSignPanel({
   titled?: boolean;
 }) {
   const w = useWallet();
+  const latest = useLatestLedger();
   const [text, setText] = useState(initial ?? "");
-  // Set once this session's "Sign and hand over" is confirmed.
+  // Set once this session's "Sign to close the certificate" is confirmed.
   const [doneHash, setDoneHash] = useState<string | null>(null);
   let parsed: Handover | null = null;
   let parseErr: string | null = null;
@@ -249,7 +296,7 @@ export function CoSignPanel({
     }
   }
   const rug = parsed ? rugs.find((r) => r.id === BigInt(parsed!.rug)) : undefined;
-  const state = parsed ? checkHandover(parsed, rug) : null;
+  const state = parsed ? checkHandover(parsed, rug, latest) : null;
 
   return (
     <div className="panel">
@@ -294,7 +341,7 @@ export function CoSignPanel({
           ) : (
             <p>
               <Party address={parsed.holder} /> wants to collect rug <strong className="mono">{rugNo(BigInt(parsed.rug))}</strong>
-              {rug ? <> ({rug.description})</> : null}. Hand the rug over, then sign to close its certificate.
+              {rug ? <> ({rug.description})</> : null}.
             </p>
           )}
           {state === "unknown-rug" && <p className="error-text">There's no rug with this number yet. Refresh, or check the code.</p>}
@@ -304,8 +351,20 @@ export function CoSignPanel({
               <Party address={parsed.holder} /> no longer holds this rug, so this code can't be used. Ask the current holder for a new one.
             </p>
           )}
+          {state === "pledged" && (
+            <p className="notice warn">
+              <strong>Keep the rug in the store.</strong> It backs a loan request or a running loan, so it can't be collected now. It can be
+              collected once the request is cancelled or the loan is repaid.
+            </p>
+          )}
+          {state === "expired" && (
+            <p className="error-text">This code has expired. Keep the rug, and ask the holder to press Sign again and send a new link.</p>
+          )}
           {state === "ready" && (
             <>
+              <p className="small">
+                Sign first. Hand the rug over only after the network confirms the certificate is closed.
+              </p>
               {w.address && w.address !== parsed.store && (
                 <p className="small muted">
                   This needs <Party address={parsed.store} store />. Switch accounts in Varial.
@@ -313,7 +372,7 @@ export function CoSignPanel({
               )}
               <ActionButton
                 primary
-                label="Sign and hand over"
+                label="Sign to close the certificate"
                 signer={parsed.store}
                 run={async (onStep) => {
                   const r = await submitHandover(parsed!, onStep);
