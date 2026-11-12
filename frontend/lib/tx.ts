@@ -26,6 +26,15 @@ export const STEP_TEXT: Record<TxStep, string> = {
   confirming: "Waiting for the network to confirm…",
 };
 
+/** JSON that survives BigInt and XDR objects, for error text only. */
+const safeJson = (v: unknown) => {
+  try {
+    return JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x));
+  } catch {
+    return String(v);
+  }
+};
+
 export type Pending = { hash: string; label: string; source: string; at: number };
 export type TxResult = { hash: string; value: unknown };
 
@@ -82,7 +91,7 @@ async function signSendConfirm(tx: Transaction, source: string, label: string, o
   const sent = await server().sendTransaction(signed);
   if (sent.status === "ERROR") {
     clearPending();
-    throw explainError(JSON.stringify(sent.errorResult ?? sent));
+    throw explainError(safeJson(sent.errorResult ?? sent));
   }
   onStep("confirming");
   const res = await waitFor(hash);
@@ -93,7 +102,7 @@ async function signSendConfirm(tx: Transaction, source: string, label: string, o
   }
   if (res.status === "FAILED") {
     clearPending();
-    throw explainError(JSON.stringify(res.resultXdr ?? res));
+    throw new AppError("The network ran the transaction but it failed, so nothing changed. Refresh and try again.", undefined, "network");
   }
   throw new AppError("Sent, but the network hasn't confirmed it yet. Refresh in a minute to see if it went through.", undefined, "network");
 }

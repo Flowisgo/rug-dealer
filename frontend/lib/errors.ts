@@ -29,9 +29,9 @@ export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> 
 const USDC_ERRORS: Record<number, string> = {
   6: "This account doesn't exist on testnet yet. Fund it with test XLM first.",
   8: "That amount isn't valid.",
-  10: "There isn't enough test USDC in this wallet.",
+  10: "There isn't enough test USDC in the paying wallet.",
   11: "This wallet's USDC is not authorised by the issuer.",
-  13: "This wallet can't hold test USDC yet. Add USDC to the wallet first.",
+  13: "One of the wallets in this payment can't hold test USDC yet. It needs USDC added first (wallet menu, Add USDC to wallet).",
 };
 
 export class AppError extends Error {
