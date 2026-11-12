@@ -1,5 +1,5 @@
 // The transaction pipeline:
-// build -> simulate (restore archived data if needed) -> assemble -> Freighter
+// build -> simulate (restore archived data if needed) -> assemble -> Varial
 // sign -> send -> poll. The pending hash is kept in localStorage so a refresh
 // mid-flight can pick it up again.
 import {
@@ -20,8 +20,8 @@ import { assertSigner, signTx } from "./wallet";
 export type TxStep = "checking" | "restoring" | "signing" | "sending" | "confirming";
 export const STEP_TEXT: Record<TxStep, string> = {
   checking: "Checking with the network…",
-  restoring: "Restoring old records first. Sign once in Freighter…",
-  signing: "Review and sign in Freighter…",
+  restoring: "Restoring old records first. Sign once in Varial…",
+  signing: "Review and sign in Varial…",
   sending: "Sending…",
   confirming: "Waiting for the network to confirm…",
 };

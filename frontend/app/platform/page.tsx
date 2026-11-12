@@ -39,7 +39,7 @@ function PlatformDesk({ viewer, data }: { viewer: string; data: Ledger }) {
     <>
       {viewer !== admin && (
         <div className="notice" style={{ marginTop: 24 }}>
-          Only <Party address={admin} /> can approve stores, change limits or freeze. You can look, but switch accounts in Freighter to act.
+          Only <Party address={admin} /> can approve stores, change limits or freeze. You can look, but switch accounts in Varial to act.
         </div>
       )}
 

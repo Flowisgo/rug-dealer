@@ -158,13 +158,13 @@ export function RugCard({
 export function useSignerCheck(signer: string | null) {
   const w = useWallet();
   if (!signer) return { ok: false, hint: null as ReactNode };
-  if (!w.address) return { ok: false, hint: <>Connect Freighter as <Party address={signer} /> to do this.</> };
+  if (!w.address) return { ok: false, hint: <>Connect Varial as <Party address={signer} /> to do this.</> };
   if (w.address !== signer)
     return {
       ok: false,
       hint: (
         <>
-          This needs <Party address={signer} />. Freighter has <Party address={w.address} /> selected; switch accounts in Freighter.
+          This needs <Party address={signer} />. Varial has <Party address={w.address} /> selected; switch accounts in Varial.
         </>
       ),
     };

@@ -4,14 +4,14 @@ This is a script for the submission video. Record it in short clips and cut them
 
 ## Before recording
 
-1. Use Chrome with Freighter on **Testnet**. Import the demo accounts: Kaya Rug House (store), Ayşe the weaver, Deniz the investor.
+1. Use Chrome with Varial on **Testnet**. Import the demo accounts: Kaya Rug House (store), Ayşe the weaver, Deniz the investor.
 2. Run `npm run dev` in `frontend/`, or use the live URL. Set the window to 1280 px wide. Close other tabs.
 3. Check each demo account has test USDC (the wallet chip shows the balance).
 4. **Stage the buy-out clip.** Shortly before recording clip 6, do the following:
    - Issue a rug and borrow for **1 month**.
    - Fund the loan.
    - Wait 60 s for it to become overdue.
-   - The store then has **60 s** to buy, so have the store desk open and Freighter on Kaya Rug House.
+   - The store then has **60 s** to buy, so have the store desk open and Varial on Kaya Rug House.
 
 ## Shot list (about 60 s)
 
@@ -27,6 +27,6 @@ This is a script for the submission video. Record it in short clips and cut them
 
 ## Cutting notes
 
-- Trim the Freighter pop-ups to a beat each. Show one in full (clip 3) so viewers see a real signature.
+- Trim the Varial pop-ups to a beat each. Show one in full (clip 3) so viewers see a real signature.
 - If clip 6 misses its 60-second window, the loan becomes claimable by the investor instead. Stage a new 1-month loan and retake.
-- Don't show the Freighter secret-key import or any settings screen.
+- Don't show the Varial secret-key import or any settings screen.

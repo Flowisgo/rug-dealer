@@ -36,7 +36,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     usdcBalance(a).then(setBalance, () => setBalance(null));
   }, []);
 
-  // Restore a previous connection and follow account switches in Freighter.
+  // Restore a previous connection and follow account switches in Varial.
   useEffect(() => {
     let alive = true;
     const check = async () => {
@@ -171,7 +171,7 @@ export function WalletChip() {
           <div className="mono">{w.address}</div>
         </div>
         {w.testnet === false && (
-          <p className="error-text">Freighter is on another network. Switch it to Testnet; this demo never uses real money.</p>
+          <p className="error-text">Varial is on another network. Switch it to Testnet; this demo never uses real money.</p>
         )}
         {w.balance === null && (
           <>

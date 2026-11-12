@@ -13,7 +13,7 @@ export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> 
   9: { name: "InvalidAmount", message: "That amount isn't valid." },
   10: { name: "RugNotFound", message: "There is no rug with that number." },
   11: { name: "RugNotFree", message: "This rug is already waiting for an investor, held as security, or collected." },
-  12: { name: "NotRugOwner", message: "Only the rug's holder can do this. Switch to the holder's account in Freighter." },
+  12: { name: "NotRugOwner", message: "Only the rug's holder can do this. Switch to the holder's account in Varial." },
   13: { name: "StoreLimitExceeded", message: "The store's limit is used up. It can take this loan once other loans close." },
   14: { name: "LoanNotFound", message: "There is no loan with that number." },
   15: { name: "LoanNotRequested", message: "This request has already been funded or cancelled." },
@@ -64,7 +64,7 @@ export function explainError(raw: string): AppError {
     return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
   }
   if (/Error\(Auth,/.test(raw))
-    return new AppError("This needs a signature from a different account. Switch accounts in Freighter.", undefined, "auth");
+    return new AppError("This needs a signature from a different account. Switch accounts in Varial.", undefined, "auth");
   if (/Error\(Storage, MissingValue\)|Account not found|AccountMissing/.test(raw))
     return new AppError("This account doesn't exist on testnet yet. Fund it with test XLM first.", undefined, "network");
   return new AppError("The network refused this action. Refresh and check the account, then try again.", undefined, "unknown");

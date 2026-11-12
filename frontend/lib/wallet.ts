@@ -1,4 +1,4 @@
-// Freighter wallet: connect, testnet check, sign transactions and auth entries.
+// Varial wallet: connect, testnet check, sign transactions and auth entries.
 import {
   getAddress,
   getNetworkDetails,
@@ -22,23 +22,23 @@ export async function freighterInstalled(): Promise<boolean> {
   }
 }
 
-/** True when Freighter is set to Stellar Testnet. */
+/** True when Varial is set to Stellar Testnet. */
 export async function onTestnet(): Promise<boolean> {
   const n = await getNetworkDetails();
   return !n.error && n.networkPassphrase === NETWORK_PASSPHRASE;
 }
 
-/** Ask Freighter for access. Returns the selected account. */
+/** Ask Varial for access. Returns the selected account. */
 export async function connect(): Promise<string> {
   if (!(await freighterInstalled()))
-    throw fail("Freighter isn't available in this browser. Open the app in Chrome with the Freighter extension.");
+    throw fail("Varial isn't available in this browser. Open the app in Chrome with the Varial extension.");
   const access = await requestAccess();
-  if (access.error || !access.address) throw fail(access.error?.message || "Connection was declined in Freighter.");
-  if (!(await onTestnet())) throw fail("Freighter is not on Testnet. Switch the network to Testnet in Freighter.");
+  if (access.error || !access.address) throw fail(access.error?.message || "Connection was declined in Varial.");
+  if (!(await onTestnet())) throw fail("Varial is not on Testnet. Switch the network to Testnet in Varial.");
   return access.address;
 }
 
-/** The account Freighter has selected, if this site is already allowed. */
+/** The account Varial has selected, if this site is already allowed. */
 export async function currentAddress(): Promise<string | null> {
   try {
     if (!(await freighterInstalled())) return null;
@@ -50,13 +50,13 @@ export async function currentAddress(): Promise<string | null> {
   }
 }
 
-/** Make sure Freighter is on testnet and has `expected` selected. */
+/** Make sure Varial is on testnet and has `expected` selected. */
 export async function assertSigner(expected: string): Promise<void> {
-  if (!(await freighterInstalled())) throw fail("Freighter isn't available in this browser.");
-  if (!(await onTestnet())) throw fail("Freighter is not on Testnet. Switch the network to Testnet in Freighter.");
+  if (!(await freighterInstalled())) throw fail("Varial isn't available in this browser.");
+  if (!(await onTestnet())) throw fail("Varial is not on Testnet. Switch the network to Testnet in Varial.");
   const r = await getAddress();
-  if (r.error || !r.address) throw fail("Unlock Freighter and connect again.");
-  if (r.address !== expected) throw fail(`Freighter has a different account selected. Switch to ${short(expected)} and try again.`);
+  if (r.error || !r.address) throw fail("Unlock Varial and connect again.");
+  if (r.address !== expected) throw fail(`Varial has a different account selected. Switch to ${short(expected)} and try again.`);
 }
 
 export async function signTx(txXdr: string, address: string): Promise<string> {
@@ -68,7 +68,7 @@ export async function signTx(txXdr: string, address: string): Promise<string> {
 
 const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-/** Sign a Soroban auth-entry preimage (base64 XDR). Freighter returns the
+/** Sign a Soroban auth-entry preimage (base64 XDR). Varial returns the
  * ed25519 signature over its hash. */
 export async function signAuth(preimageXdr: string, address: string): Promise<{ signature: Uint8Array; publicKey: string }> {
   const r = await signAuthEntry(preimageXdr, { networkPassphrase: NETWORK_PASSPHRASE, address });

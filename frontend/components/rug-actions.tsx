@@ -143,7 +143,7 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
         </p>
         <div className="btn-row">
           <button className="btn" onClick={() => void sign()} disabled={busy || !check.ok}>
-            {busy ? "Waiting for Freighter…" : "Collect the rug"}
+            {busy ? "Waiting for Varial…" : "Collect the rug"}
           </button>
         </div>
         {!check.ok && check.hint && <p className="small muted" style={{ marginTop: 6 }}>{check.hint}</p>}
@@ -308,7 +308,7 @@ export function CoSignPanel({
             <>
               {w.address && w.address !== parsed.store && (
                 <p className="small muted">
-                  This needs <Party address={parsed.store} store />. Switch accounts in Freighter.
+                  This needs <Party address={parsed.store} store />. Switch accounts in Varial.
                 </p>
               )}
               <ActionButton

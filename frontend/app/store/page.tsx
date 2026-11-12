@@ -55,7 +55,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
     return (
       <div className="notice warn" style={{ marginTop: 24 }}>
         <strong>This account isn't an approved store.</strong> <Party address={address} /> can't write rug certificates. The demo stores
-        are <Party address={ACCOUNTS.store} /> and <Party address={ACCOUNTS.store2} />; switch accounts in Freighter, or ask the platform
+        are <Party address={ACCOUNTS.store} /> and <Party address={ACCOUNTS.store2} />; switch accounts in Varial, or ask the platform
         to approve this one.
       </div>
     );

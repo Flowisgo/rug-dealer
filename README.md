@@ -64,7 +64,7 @@ A real buyer would pay about $1,500 for the rug. The store's buying price is $60
 - **Rug pictures** are woven patterns the app generates from each certificate number, so certificates are easy to tell apart. They are not photos of the real rugs: the contract stores only a text description. A real version would photograph each rug at intake and record the photo's fingerprint on the certificate.
 - **USDC** is a test asset with its own Stellar Asset Contract. The weaver's local currency is mocked at a fixed demo rate of 1 USDC ≈ 45 TRY.
 - **The web app** ([`frontend/`](frontend)) does the following:
-  - signs with Freighter
+  - signs with Varial
   - simulates every transaction before sending it, so archived contract data is restored automatically
   - builds the activity feed from contract events
 
@@ -78,7 +78,7 @@ The app has five pages: **Store**, **Weaver**, **Investor**, **Platform** and **
 
 **With a wallet.**
 
-1. Install [Freighter](https://www.freighter.app/) in Chrome and switch it to **Testnet**.
+1. Install the [Varial](https://www.freighter.app/) wallet (formerly Freighter) in Chrome and switch it to **Testnet**.
 2. Import a demo account, or create a new one and fund it with test XLM from [Friendbot](https://friendbot.stellar.org).
 3. A new account also needs test USDC. Press **Add USDC to wallet** on the wallet chip to add the trustline. The test USDC issuer then has to send you some, because the app can't mint it.
 4. Then follow one rug from start to finish:

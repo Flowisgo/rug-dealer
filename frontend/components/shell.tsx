@@ -126,9 +126,9 @@ export function NoViewer({ role, what }: { role: Role; what: string }) {
   const w = useWallet();
   return (
     <div className="panel" style={{ marginTop: 24 }}>
-      <p className="panel-title">Connect Freighter to {what}.</p>
+      <p className="panel-title">Connect Varial to {what}.</p>
       <p className="muted small" style={{ marginBottom: 14 }}>
-        Use Freighter on Testnet. The demo account for this desk is <Party address={DEMO_FOR[role]} />.
+        Use Varial on Testnet. The demo account for this desk is <Party address={DEMO_FOR[role]} />.
       </p>
       <div className="btn-row">
         <button className="btn btn-primary" onClick={() => void w.connect()} disabled={w.connecting}>
@@ -140,7 +140,7 @@ export function NoViewer({ role, what }: { role: Role; what: string }) {
       </div>
       {w.installed === false && (
         <p className="small muted" style={{ marginTop: 12 }}>
-          Freighter isn't installed in this browser, so you can look around but not sign.
+          Varial isn't installed in this browser, so you can look around but not sign.
         </p>
       )}
       {w.error && <p className="error-text" style={{ marginTop: 12 }}>{w.error}</p>}
@@ -153,7 +153,7 @@ export function LookingAs({ address }: { address: string }) {
   const w = useWallet();
   return (
     <div className="notice" style={{ marginTop: 20 }}>
-      You're looking at this desk as <Party address={address} />. {w.address === address ? "Freighter has this account, so you can act." : "To act, connect Freighter as this account."}{" "}
+      You're looking at this desk as <Party address={address} />. {w.address === address ? "Varial has this account, so you can act." : "To act, connect Varial as this account."}{" "}
       <Link href="?">Back to my own wallet</Link>
     </div>
   );
