@@ -153,8 +153,7 @@ export function LookingAs({ address }: { address: string }) {
   const w = useWallet();
   return (
     <div className="notice" style={{ marginTop: 20 }}>
-      You're looking at <Party address={address} />
-      's screen. {w.address === address ? "Freighter has this account, so you can act." : "To act, connect Freighter as this account."}{" "}
+      You're looking at this desk as <Party address={address} />. {w.address === address ? "Freighter has this account, so you can act." : "To act, connect Freighter as this account."}{" "}
       <Link href="?">Back to my own wallet</Link>
     </div>
   );

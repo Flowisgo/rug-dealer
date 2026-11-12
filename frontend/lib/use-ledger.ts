@@ -2,7 +2,7 @@
 // One shared snapshot of the contract for every screen: config, rugs, loans,
 // stores and events. Cached for a few seconds and refreshed after each action.
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { getConfig, listLoans, listRugs, listStores, type Config, type Loan, type Rug, type Store } from "./contract";
+import { getConfig, listLoans, listRugs, listStores, usdcBalance, type Config, type Loan, type Rug, type Store } from "./contract";
 import { fetchEvents, type AppEvent } from "./events";
 import { messageOf } from "./errors";
 
@@ -105,4 +105,20 @@ export function useNow(): bigint {
     return () => clearInterval(t);
   }, []);
   return now;
+}
+
+/** Any account's USDC balance (public data). undefined while loading, null
+ * when the account can't hold USDC. Re-reads when the ledger refreshes. */
+export function useBalance(address: string | null): bigint | null | undefined {
+  const [bal, setBal] = useState<bigint | null | undefined>(undefined);
+  const loadedAt = useSyncExternalStore(subscribe, () => state.data?.loadedAt ?? 0, () => 0);
+  useEffect(() => {
+    if (!address) return setBal(undefined);
+    let alive = true;
+    usdcBalance(address).then((b) => alive && setBal(b), () => alive && setBal(null));
+    return () => {
+      alive = false;
+    };
+  }, [address, loadedAt]);
+  return bal;
 }

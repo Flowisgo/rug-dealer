@@ -1,0 +1,365 @@
+"use client";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { BuyoutButton, CoSignPanel } from "@/components/rug-actions";
+import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
+import { MoneyBlock, MoneyInline } from "@/components/money";
+import { whenSec } from "@/components/sentence";
+import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
+import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract";
+import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
+import { redeemOwnRug } from "@/lib/handover";
+import { formatLocal, parseUsdc, quoteLocally, rugNo } from "@/lib/money";
+import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
+import { invoke } from "@/lib/tx";
+import { useLedger, useNow, type Ledger } from "@/lib/use-ledger";
+import { StrKey } from "@stellar/stellar-sdk";
+
+export default function StorePage() {
+  const { viewer, lookingAs } = useViewer();
+  const { data, error, refresh } = useLedger();
+  const params = useSearchParams();
+  const handover = params.get("handover");
+
+  return (
+    <>
+      <PageHead
+        title="Store desk"
+        lede="Write a certificate for each rug you take in, at your normal buying price. If a loan isn't repaid, you buy the rug at that same price."
+      />
+      {lookingAs && <LookingAs address={lookingAs} />}
+      {handover && data && (
+        <div style={{ marginTop: 24 }}>
+          <CoSignPanel initial={handover} rugs={data.rugs} />
+        </div>
+      )}
+      {!viewer ? (
+        <NoViewer role="store" what="open your store desk" />
+      ) : error && !data ? (
+        <ErrorBox message={error} retry={() => void refresh()} />
+      ) : !data ? (
+        <Loading />
+      ) : (
+        <StoreDesk address={viewer} data={data} hasHandover={!!handover} />
+      )}
+    </>
+  );
+}
+
+function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledger; hasHandover: boolean }) {
+  const now = useNow();
+  const store = data.stores.find((s) => s.address === address);
+  const win = data.config.buyout_window_seconds;
+
+  if (!store)
+    return (
+      <div className="notice warn" style={{ marginTop: 24 }}>
+        <strong>This account isn't an approved store.</strong> <Party address={address} /> can't write rug certificates. The demo stores
+        are <Party address={ACCOUNTS.store} /> and <Party address={ACCOUNTS.store2} />; switch accounts in Freighter, or ask the platform
+        to approve this one.
+      </div>
+    );
+
+  const myLoans = data.loans.filter((l) => l.store === address);
+  const overdue = myLoans.filter((l) => {
+    const p = loanPhase(l, now, win);
+    return p === "buyout" || p === "claimable";
+  });
+  const running = myLoans.filter((l) => loanPhase(l, now, win) === "running");
+  const myRugs = data.rugs.filter((r) => r.store === address).sort((a, b) => Number(b.id - a.id));
+  const rugById = new Map(data.rugs.map((r) => [r.id, r]));
+
+  return (
+    <>
+      <StoreStatus store={store} reason={data.frozenReason[address]} />
+
+      <Section label="Overdue loans" count={overdue.length}>
+        {overdue.length === 0 ? (
+          <Empty title="Nothing overdue.">When a loan passes its end date without repayment, it shows here with your buy-out window.</Empty>
+        ) : (
+          <div className="tickets">
+            {overdue.map((l) => (
+              <OverdueTicket key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section label="Issue a rug certificate">
+        {store.frozen ? (
+          <Empty title="This store can't issue new certificates.">A frozen store can still buy out loans and hand rugs over.</Empty>
+        ) : (
+          <IssueForm store={store} data={data} />
+        )}
+      </Section>
+
+      {!hasHandover && (
+        <Section label="Hand a rug over">
+          <CoSignPanel initial={null} rugs={data.rugs} titled={false} />
+        </Section>
+      )}
+
+      <Section label="Loans running" count={running.length}>
+        {running.length === 0 ? (
+          <Empty title="No loans running.">Funded loans on your rugs show here until they're repaid or due.</Empty>
+        ) : (
+          <div className="tickets">
+            {running.map((l) => {
+              const rug = rugById.get(l.rug_id);
+              return (
+                <RugTicket key={l.id.toString()} id={l.rug_id} name={rug?.description ?? rugNo(l.rug_id)} tag={<Tag tone="secured">Held as security</Tag>}>
+                  <div className="ticket-meta">
+                    <KV k="Weaver">
+                      <Party address={l.weaver} />
+                    </KV>
+                    <KV k="Loan">
+                      <MoneyBlock units={l.principal} />
+                    </KV>
+                    <KV k="Due in">
+                      <Countdown to={l.end_at!} />
+                    </KV>
+                  </div>
+                </RugTicket>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      <Section label="This store's rugs" count={myRugs.length}>
+        {myRugs.length === 0 ? (
+          <Empty title="No rugs yet.">Issue a certificate above when a weaver leaves a rug with you.</Empty>
+        ) : (
+          <div className="tickets">
+            {myRugs.map((r) => (
+              <StoreRug key={r.id.toString()} rug={r} store={address} loans={data.loans} />
+            ))}
+          </div>
+        )}
+      </Section>
+    </>
+  );
+}
+
+function StoreStatus({ store, reason }: { store: Store; reason?: "Platform" | "MissedBuyout" }) {
+  const available = store.limit - store.open_principal;
+  const pct = store.limit > 0n ? Number((store.open_principal * 1000n) / store.limit) / 10 : 100;
+  return (
+    <div style={{ marginTop: 24, display: "grid", gap: 16 }}>
+      {store.frozen && (
+        <div className="frozen-banner" role="status">
+          <strong>{reason === "MissedBuyout" ? "Frozen: missed buy-out" : "Frozen by the platform"}</strong>
+          This store can't issue new rug certificates, and investors see the flag. You can still buy out loans and hand rugs over. Freezing
+          is permanent.
+        </div>
+      )}
+      <div className="stats three">
+        <div>
+          <span className="k">Limit set by the platform</span>
+          <MoneyBlock units={store.limit} />
+        </div>
+        <div>
+          <span className="k">Lent out on your rugs now</span>
+          <MoneyBlock units={store.open_principal} />
+        </div>
+        <div>
+          <span className="k">Still available</span>
+          <MoneyBlock units={available > 0n ? available : 0n} />
+        </div>
+      </div>
+      <div className={pct > 100 ? "meter over" : "meter"} role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Limit used">
+        <span style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; win: bigint }) {
+  const closes = loan.end_at! + win;
+  const open = now < closes;
+  return (
+    <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="late">Overdue</Tag>}>
+      <div className="ticket-meta">
+        <KV k="Weaver">
+          <Party address={loan.weaver} />
+        </KV>
+        <KV k="Investor">{loan.investor ? <Party address={loan.investor} /> : "—"}</KV>
+        <KV k="Was due">
+          <span className="mono">{whenSec(loan.end_at!)}</span>
+        </KV>
+        <KV k={open ? "Buy-out window closes in" : "Buy-out window"}>{open ? <Countdown to={closes} /> : "Closed"}</KV>
+      </div>
+      {open ? (
+        <>
+          <p className="small">
+            The weaver hasn't repaid. Buy the rug for <MoneyInline units={loan.principal} />; the investor is paid from that. The weaver can
+            still repay until you do.
+          </p>
+          <BuyoutButton loan={loan} />
+        </>
+      ) : (
+        <p className="notice warn">
+          <strong>The buy-out window has closed.</strong> The investor can now take the rug, and this store will be frozen.
+        </p>
+      )}
+    </RugTicket>
+  );
+}
+
+function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[] }) {
+  const open = openLoanFor(rug.id, loans);
+  const last = latestLoanFor(rug.id, loans);
+  let tag: { text: string; tone: Tone } = rugLabel(rug);
+  if (rug.status === "Free" && rug.owner === store) tag = { text: "Bought by this store", tone: "plain" };
+  else if (rug.status === "Free" && last?.status === "Claimed") tag = { text: "Held by the investor", tone: "plain" };
+  return (
+    <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
+      <div className="ticket-meta">
+        <KV k="Holder">
+          <Party address={rug.owner} />
+        </KV>
+        <KV k="Price">
+          <MoneyBlock units={rug.price} />
+        </KV>
+        {open && <KV k="Loan">{LOAN_STATUS_TEXT[open.status]}{open.status === "Funded" ? `, ${monthsText(open.months)}` : ""}</KV>}
+      </div>
+      {rug.status === "Free" && rug.owner === store && (
+        <>
+          <p className="small muted">This rug is yours after the buy-out. Close its certificate when the rug leaves the store.</p>
+          <ActionButton
+            label="Close the certificate"
+            signer={store}
+            confirm={{
+              title: `Close the certificate for ${rugNo(rug.id)}?`,
+              body: "The certificate is destroyed and can't be used to borrow again. Do this when the rug leaves the store.",
+              yes: "Close it",
+            }}
+            done="Closed."
+            run={(onStep) => redeemOwnRug(store, rug.id, onStep)}
+          />
+        </>
+      )}
+    </RugTicket>
+  );
+}
+
+function IssueForm({ store, data }: { store: Store; data: Ledger }) {
+  const [who, setWho] = useState<"demo" | "paste">("demo");
+  const [pasted, setPasted] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("600");
+
+  const weaver = who === "demo" ? ACCOUNTS.weaver : pasted.trim();
+  const weaverOk = StrKey.isValidEd25519PublicKey(weaver);
+  const bytes = new TextEncoder().encode(description.trim()).length;
+  const descOk = bytes >= 1 && bytes <= 280;
+  const units = parseUsdc(price);
+  const priceOk = units !== null && units > 0n;
+  const previews = useMemo(
+    () => (priceOk ? [1, 6, 12].filter((m) => m <= data.config.max_months).map((m) => quoteLocally(units!, m, data.config)) : []),
+    [priceOk, units, data.config],
+  );
+
+  return (
+    <div className="split">
+      <div className="panel">
+        <fieldset style={{ border: 0, padding: 0, margin: "0 0 16px" }}>
+          <legend className="small" style={{ fontWeight: 500, marginBottom: 8 }}>
+            Whose rug is it?
+          </legend>
+          <div className="choices">
+            <label className="choice">
+              <input type="radio" name="who" checked={who === "demo"} onChange={() => setWho("demo")} />
+              <span>{DEMO_NAMES[ACCOUNTS.weaver].name}</span>
+            </label>
+            <label className="choice">
+              <input type="radio" name="who" checked={who === "paste"} onChange={() => setWho("paste")} />
+              <span>Paste an address</span>
+            </label>
+          </div>
+        </fieldset>
+        {who === "paste" && (
+          <label className="field">
+            <span>Weaver's Stellar address</span>
+            <input
+              className="input mono"
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              placeholder="G…"
+              aria-invalid={pasted !== "" && !weaverOk}
+              spellCheck={false}
+            />
+            {pasted !== "" && !weaverOk && <span className="error-text">That isn't a Stellar account address (starts with G, 56 characters).</span>}
+            <span className="hint">They'll need a USDC trustline to receive the loan.</span>
+          </label>
+        )}
+        <label className="field">
+          <span>What is the rug?</span>
+          <textarea
+            className="input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Hand-knotted wool, madder red field, 160 × 230 cm"
+            aria-invalid={description !== "" && !descOk}
+          />
+          <span className="hint">
+            <span className="mono">{bytes}</span>/280. This becomes the rug's name everywhere.
+          </span>
+        </label>
+        <label className="field">
+          <span>Your buying price</span>
+          <input
+            className="input mono"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            aria-invalid={price !== "" && !priceOk}
+          />
+          <span className="hint">
+            {priceOk ? (
+              <span className="mono">≈ {formatLocal(units!)} TRY</span>
+            ) : (
+              <span className="error-text">Enter a USDC amount above zero, up to 7 decimals.</span>
+            )}{" "}
+            What you'd normally pay for this rug. You must buy it at this price if the loan isn't repaid.
+          </span>
+        </label>
+        <ActionButton
+          primary
+          label="Issue rug certificate"
+          signer={store.address}
+          disabled={!weaverOk || !descOk || !priceOk}
+          done="Certificate issued. The weaver can now borrow against it."
+          run={async (onStep) => {
+            const r = await invoke(
+              {
+                source: store.address,
+                method: "mint_rug",
+                args: [addr(store.address), addr(weaver), str(description.trim()), i128(units!)],
+                label: "Issue rug certificate",
+              },
+              onStep,
+            );
+            setDescription("");
+            return r;
+          }}
+        />
+      </div>
+      <div className="panel" style={{ background: "transparent" }}>
+        <p className="panel-title">What the weaver receives</p>
+        {previews.length === 0 ? (
+          <p className="muted small">Enter a price to see the weaver's payout.</p>
+        ) : (
+          <>
+            <LedgerRows rows={previews.map((q) => ({ label: `If they borrow for ${monthsText(q.months)}`, units: q.weaver_payout }))} />
+            <p className="small muted" style={{ marginTop: 10 }}>
+              They repay the full price. Your fee for holding the rug is{" "}
+              <MoneyInline units={previews.find((q) => q.months === 6)?.store_fee ?? previews[0].store_fee} /> on a 6-month loan, paid when
+              it's funded.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
