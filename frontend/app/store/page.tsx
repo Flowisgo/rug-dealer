@@ -5,7 +5,7 @@ import { BuyoutButton, CoSignPanel, HandedOver } from "@/components/rug-actions"
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline } from "@/components/money";
 import { whenSec } from "@/components/sentence";
-import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
+import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract";
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
 import { redeemOwnRug } from "@/lib/handover";
@@ -77,7 +77,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
         {overdue.length === 0 ? (
           <Empty title="Nothing overdue.">When a loan passes its end date without repayment, it shows here with your buy-out window.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {overdue.map((l) => (
               <OverdueTicket key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} />
             ))}
@@ -103,12 +103,12 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
         {running.length === 0 ? (
           <Empty title="No loans running.">Funded loans on your rugs show here until they're repaid or due.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {running.map((l) => {
               const rug = rugById.get(l.rug_id);
               return (
-                <RugTicket key={l.id.toString()} id={l.rug_id} name={rug?.description ?? rugNo(l.rug_id)} tag={<Tag tone="secured">Held as security</Tag>}>
-                  <div className="ticket-meta">
+                <RugCard key={l.id.toString()} id={l.rug_id} name={rug?.description ?? rugNo(l.rug_id)} tag={<Tag tone="secured">Held as security</Tag>}>
+                  <div className="card-meta">
                     <KV k="Weaver">
                       <Party address={l.weaver} />
                     </KV>
@@ -119,7 +119,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
                       <Countdown to={l.end_at!} />
                     </KV>
                   </div>
-                </RugTicket>
+                </RugCard>
               );
             })}
           </div>
@@ -130,7 +130,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
         {myRugs.length === 0 ? (
           <Empty title="No rugs yet.">Issue a certificate above when a weaver leaves a rug with you.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {myRugs.map((r) => (
               <StoreRug key={r.id.toString()} rug={r} store={address} loans={data.loans} />
             ))}
@@ -178,8 +178,8 @@ function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bi
   const closes = loan.end_at! + win;
   const open = now < closes;
   return (
-    <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="late">Overdue</Tag>}>
-      <div className="ticket-meta">
+    <RugCard id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="late">Overdue</Tag>}>
+      <div className="card-meta">
         <KV k="Weaver">
           <Party address={loan.weaver} />
         </KV>
@@ -202,12 +202,12 @@ function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bi
           <strong>The buy-out window has closed.</strong> The investor can now take the rug, and this store will be frozen.
         </p>
       )}
-    </RugTicket>
+    </RugCard>
   );
 }
 
 function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[] }) {
-  // Kept across ledger refreshes (the ticket stays mounted), so the success
+  // Kept across ledger refreshes (the card stays mounted), so the success
   // state survives the rug turning Redeemed.
   const [closedHash, setClosedHash] = useState<string | null>(null);
   const open = openLoanFor(rug.id, loans);
@@ -216,8 +216,8 @@ function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[
   if (rug.status === "Free" && rug.owner === store) tag = { text: "Bought by this store", tone: "plain" };
   else if (rug.status === "Free" && last?.status === "Claimed") tag = { text: "Held by the investor", tone: "plain" };
   return (
-    <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
-      <div className="ticket-meta">
+    <RugCard id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
+      <div className="card-meta">
         <KV k="Holder">
           <Party address={rug.owner} store={rug.owner === rug.store} />
         </KV>
@@ -246,7 +246,7 @@ function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[
           />
         </>
       )}
-    </RugTicket>
+    </RugCard>
   );
 }
 

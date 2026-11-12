@@ -4,7 +4,7 @@ import { BorrowForm, HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline } from "@/components/money";
 import { whenSec } from "@/components/sentence";
-import { ActionButton, Countdown, Empty, ErrorBox, KV, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
+import { ActionButton, Countdown, Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { u64, type Loan, type Rug } from "@/lib/contract";
 import { ACCOUNTS } from "@/lib/deployment";
 import { rugNo, usdcLabel } from "@/lib/money";
@@ -83,7 +83,7 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
             )}
           </Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {active.map((rug) => (
               <WeaverRug key={rug.id.toString()} rug={rug} weaver={weaver} data={data} now={now} win={win} />
             ))}
@@ -93,13 +93,13 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
 
       {past.length > 0 && (
         <Section label="Earlier rugs" count={past.length}>
-          <div className="tickets">
+          <div className="card-list">
             {past.map((rug) => {
               const last = latestLoanFor(rug.id, data.loans);
               const label = pastLabel(rug, last, weaver);
               return (
-                <RugTicket key={rug.id.toString()} id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
-                  <div className="ticket-meta">
+                <RugCard key={rug.id.toString()} id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
+                  <div className="card-meta">
                     <KV k="Store">
                       <Party address={rug.store} store />
                     </KV>
@@ -108,7 +108,7 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
                     </KV>
                   </div>
                   <p className="small muted">{label.detail}</p>
-                </RugTicket>
+                </RugCard>
               );
             })}
           </div>
@@ -133,8 +133,8 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
   const label = late ? { text: "Late", tone: "late" as Tone } : rugLabel(rug, weaver);
 
   return (
-    <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
-      <div className="ticket-meta">
+    <RugCard id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
+      <div className="card-meta">
         <KV k="Store">
           <Party address={rug.store} store />
         </KV>
@@ -206,6 +206,6 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
           />
         </>
       )}
-    </RugTicket>
+    </RugCard>
   );
 }

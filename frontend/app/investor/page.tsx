@@ -3,7 +3,7 @@ import { HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline } from "@/components/money";
 import { whenSec } from "@/components/sentence";
-import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
+import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { addr, u64, type Loan, type Rug } from "@/lib/contract";
 import { rugNo, usdcLabel } from "@/lib/money";
 import { investorTotals, lendBlock, loanPhase, LOAN_STATUS_TEXT, monthsText, type Tone } from "@/lib/rules";
@@ -70,7 +70,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
         {requests.length === 0 ? (
           <Empty title="No one is waiting for a loan right now.">New requests appear here as soon as a weaver asks to borrow.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {requests.map((l) => (
               <RequestTicket key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} investor={investor} data={data} />
             ))}
@@ -82,7 +82,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
         {mine.length === 0 ? (
           <Empty title="You haven't lent yet.">Fund an open request above. Your loans and what they've paid show here.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {mine.map((l) => (
               <MyLoan key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} />
             ))}
@@ -92,10 +92,10 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
 
       {holding.length > 0 && (
         <Section label="Rugs you hold" count={holding.length}>
-          <div className="tickets">
+          <div className="card-list">
             {holding.map((r) => (
-              <RugTicket key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="plain">Yours to collect</Tag>}>
-                <div className="ticket-meta">
+              <RugCard key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="plain">Yours to collect</Tag>}>
+                <div className="card-meta">
                   <KV k="At">
                     <Party address={r.store} store />
                   </KV>
@@ -105,7 +105,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
                 </div>
                 <p className="small muted">You took this rug when the store missed its buy-out. Collect it from the store.</p>
                 <HandoverPanel rug={r} holder={investor} />
-              </RugTicket>
+              </RugCard>
             ))}
           </div>
         </Section>
@@ -113,10 +113,10 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
 
       {collected.length > 0 && (
         <Section label="Earlier rugs" count={collected.length}>
-          <div className="tickets">
+          <div className="card-list">
             {collected.map((r) => (
-              <RugTicket key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="done">Collected</Tag>}>
-                <div className="ticket-meta">
+              <RugCard key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="done">Collected</Tag>}>
+                <div className="card-meta">
                   <KV k="From">
                     <Party address={r.store} store />
                   </KV>
@@ -125,7 +125,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
                   </KV>
                 </div>
                 <p className="small muted">You collected this rug from the store. Its certificate is closed.</p>
-              </RugTicket>
+              </RugCard>
             ))}
           </div>
         </Section>
@@ -139,8 +139,8 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
   const overLimit = !!store && store.open_principal > store.limit;
   const party = lendBlock(investor, loan);
   return (
-    <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="waiting">Waiting for an investor</Tag>}>
-      <div className="ticket-meta">
+    <RugCard id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="waiting">Waiting for an investor</Tag>}>
+      <div className="card-meta">
         <KV k="Store">
           <Party address={loan.store} store />
         </KV>
@@ -182,7 +182,7 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
           invoke({ source: investor, method: "fund_loan", args: [addr(investor), u64(loan.id)], label: `Fund ${rugNo(loan.rug_id)}` }, onStep)
         }
       />
-    </RugTicket>
+    </RugCard>
   );
 }
 
@@ -191,8 +191,8 @@ function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; w
   const tone: Tone = phase === "running" ? "secured" : phase === "buyout" || phase === "claimable" ? "late" : "done";
   const text = phase === "running" ? "Running" : phase === "buyout" ? "Overdue" : phase === "claimable" ? "Store missed buy-out" : LOAN_STATUS_TEXT[loan.status];
   return (
-    <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone={tone}>{text}</Tag>}>
-      <div className="ticket-meta">
+    <RugCard id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone={tone}>{text}</Tag>}>
+      <div className="card-meta">
         <KV k="You lent">
           <MoneyBlock units={loan.principal} />
         </KV>
@@ -259,6 +259,6 @@ function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; w
           You took the rug and <MoneyInline units={loan.interest} /> interest after the store missed its buy-out.
         </p>
       )}
-    </RugTicket>
+    </RugCard>
   );
 }

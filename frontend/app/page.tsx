@@ -80,27 +80,31 @@ export default function Home() {
           )}
         </div>
 
-        <article className="ticket" aria-label="Worked example">
-          <div className="ticket-stub">
-            <span className="ticket-no">No. 0000</span>
-            <Tag tone="plain">Worked example</Tag>
-          </div>
-          <div className="ticket-body">
-            <h2 className="rug-name">A rug a buyer would pay about 1,500 USDC for</h2>
-            <p className="small muted">The store's buying price is 600 USDC. The weaver borrows it for 6 months.</p>
-            <LedgerRows
-              rows={[
-                { label: "Investor lends", units: EXAMPLE.principal },
-                { label: "Interest held for the investor", units: EXAMPLE.interest },
-                { label: "Platform fee, once", units: EXAMPLE.platform_fee },
-                { label: "Store fee for holding the rug", units: EXAMPLE.store_fee },
-                { label: "Weaver receives today", units: EXAMPLE.weaver_payout, total: true },
-              ]}
-            />
-            <p className="small">
-              The investor gets back <MoneyInline units={EXAMPLE.investor_payout} />, whether the weaver repays or the store buys the
-              rug.
-            </p>
+        <article className="rug" data-tone="plain" aria-label="Worked example">
+          <div className="rug-weave">
+            <div className="rug-field">
+              <div className="rug-head">
+                <span className="rug-label">No. 0000</span>
+                <h2 className="rug-name">A rug a buyer would pay about 1,500 USDC for</h2>
+                <div className="rug-status">
+                  <Tag tone="plain">Worked example</Tag>
+                </div>
+              </div>
+              <p className="small muted">The store's buying price is 600 USDC. The weaver borrows it for 6 months.</p>
+              <LedgerRows
+                rows={[
+                  { label: "Investor lends", units: EXAMPLE.principal },
+                  { label: "Interest held for the investor", units: EXAMPLE.interest },
+                  { label: "Platform fee, once", units: EXAMPLE.platform_fee },
+                  { label: "Store fee for holding the rug", units: EXAMPLE.store_fee },
+                  { label: "Weaver receives today", units: EXAMPLE.weaver_payout, total: true },
+                ]}
+              />
+              <p className="small">
+                The investor gets back <MoneyInline units={EXAMPLE.investor_payout} />, whether the weaver repays or the store buys the
+                rug.
+              </p>
+            </div>
           </div>
         </article>
       </div>

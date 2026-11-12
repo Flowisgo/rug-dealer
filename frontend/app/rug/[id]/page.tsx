@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PageHead } from "@/components/shell";
 import { Sentence, when, whenSec } from "@/components/sentence";
 import { MoneyBlock } from "@/components/money";
-import { Empty, ErrorBox, KV, Loading, Party, RugTicket, Section, Tag } from "@/components/ui";
+import { Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
 import { describe, rugIdOf, type AppEvent } from "@/lib/events";
 import { rugNo } from "@/lib/money";
@@ -72,8 +72,8 @@ export default function RugPage() {
       <PageHead title={`Rug ${rugNo(id)}`} lede="The full story of one rug certificate, straight from the contract. Share this page's link with anyone." />
 
       <div style={{ marginTop: 24 }}>
-        <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
-          <div className="ticket-meta">
+        <RugCard id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
+          <div className="card-meta">
             <KV k="Store">
               <Party address={rug.store} link store />
             </KV>
@@ -97,7 +97,7 @@ export default function RugPage() {
               {copied ? "Link copied" : "Copy link to this rug"}
             </button>
           </div>
-        </RugTicket>
+        </RugCard>
       </div>
 
       <Section label="Timeline" count={events.length}>

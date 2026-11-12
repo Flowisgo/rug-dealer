@@ -17,7 +17,7 @@ This is a script for the submission video. Record it in short clips and cut them
 
 | Time | Clip | On screen | Voice-over |
 |---|---|---|---|
-| 0:00–0:08 | 1. Landing | Hero and the worked-example ticket | "A weaver needs cash the day a rug is finished. The store will only pay 40% of what a real buyer would. RugDealer lets her borrow that price instead of selling." |
+| 0:00–0:08 | 1. Landing | Hero and the worked-example rug | "A weaver needs cash the day a rug is finished. The store will only pay 40% of what a real buyer would. RugDealer lets her borrow that price instead of selling." |
 | 0:08–0:16 | 2. Store desk | Kaya Rug House: **Issue rug certificate** for Ayşe at 600 USDC, sign | "The store prices the rug, keeps it safe, and issues a rug certificate on Stellar." |
 | 0:16–0:24 | 3. Weaver desk | Ayşe picks 6 months; the breakdown shows 540.00 USDC (≈ 24,300 TRY); **Ask for 600.00 USDC**, sign | "She borrows the store's price for six months. Fees come off once: she gets 540 today." |
 | 0:24–0:32 | 4. Investor desk | Deniz: **Lend 600.00 USDC**, sign; the wallet balance drops | "An investor funds the whole loan through a Soroban contract and will get 645 back." |

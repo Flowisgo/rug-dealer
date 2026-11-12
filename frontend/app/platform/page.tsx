@@ -47,7 +47,7 @@ function PlatformDesk({ viewer, data }: { viewer: string; data: Ledger }) {
         {stores.length === 0 ? (
           <Empty title="No stores yet.">Approve the first store below.</Empty>
         ) : (
-          <div className="tickets">
+          <div className="card-list">
             {stores.map((s) => (
               <StoreCard key={s.address} store={s} admin={admin} reason={data.frozenReason[s.address]} />
             ))}
@@ -85,7 +85,7 @@ function StoreCard({ store, admin, reason }: { store: Store; admin: string; reas
         </div>
         <Tag tone={state.tone}>{state.text}</Tag>
       </div>
-      <div className="ticket-meta">
+      <div className="card-meta">
         <KV k="Limit">
           <MoneyBlock units={store.limit} />
         </KV>

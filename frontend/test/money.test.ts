@@ -82,7 +82,7 @@ describe("formatting", () => {
     expect(formatLocal(50_000_000_000n)).toBe("225,000");
     expect(formatLocal(0n)).toBe("0");
   });
-  it("prints rug numbers as claim tickets", () => {
+  it("prints rug numbers for the sewn-on label", () => {
     expect(rugNo(42n)).toBe("No. 0042");
     expect(rugNo(12345)).toBe("No. 12345");
   });

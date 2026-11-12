@@ -458,79 +458,213 @@ textarea.input {
   color: var(--walnut-soft);
 }
 
-/* ---------- rug ticket ---------- */
+/* ---------- rug cards ---------- */
 
-.tickets {
+/* A flat-woven rug seen from above. The border is a twill in one dye striped
+   with wool; the dye follows the status tag (data-tone). Fringe hangs off the
+   short ends. Layout follows the card's own width (container query), so a rug
+   in a narrow column looks like one on a phone: fringe top and bottom, rug
+   number and status above the name. From 600px wide: fringe left and right,
+   number, name and status on one line. */
+
+.card-list {
   display: grid;
   gap: 16px;
 }
-.ticket {
+.card-list:has(> .rug) {
+  gap: 20px;
+}
+
+.rug {
+  --dye: var(--walnut-soft);
+  --weave: 6px; /* twill between the two dye lines */
+  --fringe: 9px;
+  container: rug / inline-size;
+  min-width: 0;
+}
+.rug[data-tone="secured"] {
+  --dye: var(--indigo);
+}
+.rug[data-tone="late"] {
+  --dye: var(--madder);
+}
+/* Collected or settled: washed-out dye, the same walnut-soft let down with wool. */
+.rug[data-tone="done"] {
+  --dye: color-mix(in srgb, var(--walnut-soft) 45%, var(--wool));
+}
+
+.rug-weave {
   position: relative;
-  display: grid;
-  grid-template-columns: 1fr;
-  background: var(--paper);
-  border: 1px solid var(--walnut);
+  margin: var(--fringe) 0;
+  border: 1px solid var(--dye);
   border-radius: var(--radius);
+  padding: var(--weave);
+  background: repeating-linear-gradient(45deg, var(--dye) 0 2px, var(--wool) 2px 5px);
 }
-.ticket-stub {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px dashed var(--walnut);
-}
-.ticket-stub::before,
-.ticket-stub::after {
+
+/* Fringe: warp threads in bundles of three. Pseudo-elements, so screen
+   readers skip them. */
+.rug-weave::before,
+.rug-weave::after {
   content: "";
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--walnut);
-  border-radius: 50%;
-  background: var(--wool);
-  bottom: -8.5px;
+  left: 3px;
+  right: 3px;
+  height: var(--fringe);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--walnut-soft) 0 1px,
+    transparent 1px 3px,
+    var(--walnut-soft) 3px 4px,
+    transparent 4px 6px,
+    var(--walnut-soft) 6px 7px,
+    transparent 7px 12px
+  );
 }
-.ticket-stub::before {
-  left: -8.5px;
-  clip-path: inset(0 0 0 50%);
+.rug-weave::before {
+  bottom: calc(100% + 1px);
 }
-.ticket-stub::after {
-  right: -8.5px;
-  clip-path: inset(0 50% 0 0);
+.rug-weave::after {
+  top: calc(100% + 1px);
 }
-.ticket-no {
-  font-family: var(--mono);
-  font-size: 1.05rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--walnut);
-  text-decoration: none;
+.rug[data-tone="done"] .rug-weave::before,
+.rug[data-tone="done"] .rug-weave::after {
+  opacity: 0.55;
 }
-a.ticket-no:hover {
-  text-decoration: underline;
-}
-/* Long status labels wrap inside the stub instead of crossing the tear line. */
-.ticket-stub .tag {
-  white-space: normal;
-  max-width: 100%;
-  text-align: left;
-}
-.ticket-body {
-  padding: 16px;
+
+.rug-field {
+  background: var(--paper);
+  border: 1px solid var(--dye);
+  padding: 0 16px 16px;
   display: grid;
   gap: 14px;
   min-width: 0;
 }
+
+.rug-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label status"
+    "name name";
+  align-items: start;
+  gap: 12px 14px;
+}
+
+/* The rug number on a cloth label, sewn on: it hangs from the top border
+   into the field. */
+.rug-label {
+  grid-area: label;
+  /* Up over the field line, the twill and the outer line. */
+  margin-top: calc(-1 * (var(--weave) + 2px));
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 4px 12px 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--walnut);
+  text-decoration: none;
+  white-space: nowrap;
+  background-color: var(--wool);
+  /* Stitches along the sewn top edge and the free bottom edge. */
+  background-image:
+    repeating-linear-gradient(90deg, var(--walnut-soft) 0 3px, transparent 3px 6px),
+    repeating-linear-gradient(90deg, var(--walnut-soft) 0 3px, transparent 3px 6px);
+  background-size:
+    calc(100% - 10px) 1px,
+    calc(100% - 10px) 1px;
+  background-position:
+    5px 4px,
+    5px calc(100% - 4px);
+  background-repeat: no-repeat;
+  border: 1px solid var(--walnut);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+a.rug-label:hover {
+  text-decoration: underline;
+}
+
+.rug-status {
+  grid-area: status;
+  justify-self: end;
+  align-self: center;
+  margin-top: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+/* Long status labels wrap instead of running past the field. */
+.rug-status .tag {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .rug-name {
+  grid-area: name;
   font-family: var(--display);
   font-weight: 400;
   font-size: 1.3rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
+  min-width: 0;
 }
-.ticket-meta {
+
+@container rug (min-width: 600px) {
+  .rug-weave {
+    margin: 0 var(--fringe);
+  }
+  .rug-weave::before,
+  .rug-weave::after {
+    top: 3px;
+    bottom: 3px;
+    left: auto;
+    right: auto;
+    width: var(--fringe);
+    height: auto;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--walnut-soft) 0 1px,
+      transparent 1px 3px,
+      var(--walnut-soft) 3px 4px,
+      transparent 4px 6px,
+      var(--walnut-soft) 6px 7px,
+      transparent 7px 12px
+    );
+  }
+  .rug-weave::before {
+    right: calc(100% + 1px);
+  }
+  .rug-weave::after {
+    left: calc(100% + 1px);
+  }
+  .rug-field {
+    padding: 0 22px 20px;
+  }
+  .rug-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "label name status";
+    gap: 12px 18px;
+  }
+  .rug-label {
+    font-size: 1.1rem;
+  }
+  .rug-name {
+    align-self: center;
+    margin-top: 6px;
+  }
+  .rug-status {
+    align-self: start;
+    max-width: 220px;
+    margin-top: 10px;
+  }
+}
+
+/* Key/value pairs and their row, shared with the platform's store cards. */
+.card-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 28px;
@@ -547,38 +681,6 @@ a.ticket-no:hover {
 }
 .kv > dd {
   margin: 0;
-}
-@media (min-width: 720px) {
-  .ticket {
-    grid-template-columns: 168px 1fr;
-  }
-  .ticket-stub {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 12px;
-    border-bottom: 0;
-    border-right: 1px dashed var(--walnut);
-    padding: 18px 16px;
-  }
-  .ticket-stub::before {
-    left: auto;
-    top: -8.5px;
-    bottom: auto;
-    right: -8.5px;
-    clip-path: inset(50% 0 0 0);
-  }
-  .ticket-stub::after {
-    bottom: -8.5px;
-    right: -8.5px;
-    clip-path: inset(0 0 50% 0);
-  }
-  .ticket-no {
-    font-size: 1.35rem;
-  }
-  .ticket-body {
-    padding: 18px 20px;
-  }
 }
 
 /* ---------- ledger rows (fee breakdowns) ---------- */
@@ -1035,16 +1137,4 @@ dialog.confirm::backdrop {
   width: 100%;
   min-height: 90px;
   word-break: break-all;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .ticket.fresh {
-    animation: stamp 0.5s ease-out;
-  }
-  @keyframes stamp {
-    from {
-      transform: translateY(-4px);
-      border-color: var(--madder);
-    }
-  }
 }

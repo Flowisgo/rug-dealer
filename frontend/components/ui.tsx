@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState, type ReactNode } from "react";
+import { isValidElement, useRef, useState, type ReactNode } from "react";
 import { accountUrl, DEMO_NAMES, txUrl } from "@/lib/deployment";
 import { messageOf } from "@/lib/errors";
 import { rugNo } from "@/lib/money";
@@ -109,8 +109,15 @@ export function LedgerRows({ rows }: { rows: { label: ReactNode; units: bigint; 
   );
 }
 
-/** A rug as a store claim ticket. */
-export function RugTicket({
+/** The dye of a rug card's border comes from its status tag, so the tag stays
+ * the one source of truth for how a rug is doing. */
+export function toneOf(tag: ReactNode): Tone {
+  return isValidElement<{ tone: Tone }>(tag) && tag.type === Tag ? tag.props.tone : "plain";
+}
+
+/** A rug seen from above: woven border dyed by status, fringe on the short
+ * ends, and the rug number on a cloth label sewn to the border. */
+export function RugCard({
   id,
   name,
   tag,
@@ -122,16 +129,18 @@ export function RugTicket({
   children?: ReactNode;
 }) {
   return (
-    <article className="ticket">
-      <div className="ticket-stub">
-        <Link className="ticket-no" href={`/rug/${id}`} title="Open this rug's history">
-          {rugNo(id)}
-        </Link>
-        {tag}
-      </div>
-      <div className="ticket-body">
-        <h3 className="rug-name">{name}</h3>
-        {children}
+    <article className="rug" data-tone={toneOf(tag)}>
+      <div className="rug-weave">
+        <div className="rug-field">
+          <div className="rug-head">
+            <Link className="rug-label" href={`/rug/${id}`} title="Open this rug's history">
+              {rugNo(id)}
+            </Link>
+            <h3 className="rug-name">{name}</h3>
+            {tag && <div className="rug-status">{tag}</div>}
+          </div>
+          {children}
+        </div>
       </div>
     </article>
   );
