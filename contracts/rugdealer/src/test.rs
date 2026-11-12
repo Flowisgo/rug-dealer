@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use crate::{
-    Error, FrozenReason, LoanCancelled, LoanRequested, LoanStatus, RugDealer, RugDealerClient,
-    RugMinted, RugRedeemed, RugStatus, StoreFrozen,
+    Error, FrozenReason, LoanCancelled, LoanRequested, LoanStatus, RugClaimed, RugDealer,
+    RugDealerClient, RugMinted, RugRedeemed, RugStatus, StoreFrozen,
 };
 use soroban_sdk::testutils::{Address as _, Events as _, Ledger, MockAuth, MockAuthInvoke};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient};
@@ -117,6 +117,10 @@ impl TestEnv {
 
     fn set_time(&self, timestamp: u64) {
         self.env.ledger().set_timestamp(timestamp);
+    }
+
+    fn mint_usdc(&self, to: &Address, amount: i128) {
+        StellarAssetClient::new(&self.env, &self.usdc).mint(to, &amount);
     }
 }
 
@@ -500,7 +504,7 @@ fn repay_and_fund_reject_second_calls() {
     test.client().repay(&loan_id);
     assert_eq!(
         contract_error(test.client().try_repay(&loan_id)),
-        Error::LoanNotFunded
+        Error::LoanSettled
     );
 }
 
@@ -693,6 +697,276 @@ fn overdue_clears_after_repayment() {
 
     test.client().repay(&loan_id);
     assert!(!test.client().is_overdue(&loan_id));
+}
+
+#[test]
+fn store_buyout_rejects_at_end_minus_one() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at - 1);
+    assert_eq!(
+        contract_error(test.client().try_store_buyout(&loan_id)),
+        Error::TooEarly
+    );
+}
+
+#[test]
+fn store_buyout_allowed_at_end() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+
+    test.client().store_buyout(&loan_id);
+
+    assert_eq!(test.balance(&test.investor), 10_045 * USDC);
+    assert_eq!(test.balance(&test.store), 409 * USDC);
+    assert_eq!(test.balance(&test.contract), 0);
+    assert_eq!(
+        test.client().get_loan(&loan_id).status,
+        LoanStatus::BoughtOut
+    );
+    let rug = test.client().get_rug(&test.rug_id);
+    assert_eq!(rug.owner, test.store);
+    assert_eq!(rug.status, RugStatus::Free);
+    assert_eq!(test.client().get_store(&test.store).open_principal, 0);
+    assert!(!test.client().is_overdue(&loan_id));
+}
+
+#[test]
+fn store_buyout_allowed_at_window_end_minus_one() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds - 1);
+
+    test.client().store_buyout(&loan_id);
+    assert_eq!(
+        test.client().get_loan(&loan_id).status,
+        LoanStatus::BoughtOut
+    );
+}
+
+#[test]
+fn store_buyout_rejects_at_window_end() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+
+    assert_eq!(
+        contract_error(test.client().try_store_buyout(&loan_id)),
+        Error::BuyoutWindowClosed
+    );
+}
+
+#[test]
+fn claim_rejects_at_end_minus_one() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at - 1);
+    assert_eq!(
+        contract_error(test.client().try_claim_rug(&loan_id)),
+        Error::BuyoutWindowOpen
+    );
+}
+
+#[test]
+fn claim_rejects_at_end() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+    assert_eq!(
+        contract_error(test.client().try_claim_rug(&loan_id)),
+        Error::BuyoutWindowOpen
+    );
+}
+
+#[test]
+fn claim_rejects_at_window_end_minus_one() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds - 1);
+    assert_eq!(
+        contract_error(test.client().try_claim_rug(&loan_id)),
+        Error::BuyoutWindowOpen
+    );
+}
+
+#[test]
+fn claim_allowed_at_window_end() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+
+    test.client().claim_rug(&loan_id);
+
+    assert_eq!(test.balance(&test.investor), 9_445 * USDC);
+    assert_eq!(test.balance(&test.store), 9 * USDC);
+    assert_eq!(test.balance(&test.contract), 0);
+    assert_eq!(test.client().get_loan(&loan_id).status, LoanStatus::Claimed);
+    let rug = test.client().get_rug(&test.rug_id);
+    assert_eq!(rug.owner, test.investor);
+    assert_eq!(rug.status, RugStatus::Free);
+    let store = test.client().get_store(&test.store);
+    assert!(store.frozen);
+    assert_eq!(store.open_principal, 0);
+}
+
+#[test]
+fn claim_emits_missed_buyout_freeze_and_rug_claimed_events() {
+    let test = TestEnv::with_config(1_000 * USDC, 0, 0, 0, 12, 60, 60);
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+
+    test.client().claim_rug(&loan_id);
+
+    let expected_frozen = StoreFrozen {
+        store: test.store.clone(),
+        reason: FrozenReason::MissedBuyout,
+    }
+    .to_xdr(&test.env, &test.contract);
+    let expected_claimed = RugClaimed {
+        loan_id,
+        rug_id: test.rug_id,
+        investor: test.investor.clone(),
+        store: test.store.clone(),
+        interest: 0,
+    }
+    .to_xdr(&test.env, &test.contract);
+    let events = test.env.events().all().filter_by_contract(&test.contract);
+    assert_eq!(events.events(), &[expected_frozen, expected_claimed]);
+}
+
+#[test]
+fn repay_still_allowed_after_window_before_claim() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+
+    test.client().repay(&loan_id);
+    assert_eq!(test.client().get_loan(&loan_id).status, LoanStatus::Repaid);
+}
+
+#[test]
+fn repay_after_buyout_is_rejected() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+    test.client().store_buyout(&loan_id);
+
+    assert_eq!(
+        contract_error(test.client().try_repay(&loan_id)),
+        Error::LoanSettled
+    );
+}
+
+#[test]
+fn repay_after_claim_is_rejected() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+    test.client().claim_rug(&loan_id);
+
+    assert_eq!(
+        contract_error(test.client().try_repay(&loan_id)),
+        Error::LoanSettled
+    );
+}
+
+#[test]
+fn claim_after_buyout_is_rejected() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+    test.client().store_buyout(&loan_id);
+
+    assert_eq!(
+        contract_error(test.client().try_claim_rug(&loan_id)),
+        Error::LoanSettled
+    );
+}
+
+#[test]
+fn buyout_after_claim_is_rejected() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+    test.client().claim_rug(&loan_id);
+
+    assert_eq!(
+        contract_error(test.client().try_store_buyout(&loan_id)),
+        Error::LoanSettled
+    );
+}
+
+#[test]
+fn buyout_and_claim_on_requested_loan_are_rejected() {
+    let test = TestEnv::new();
+    let loan_id = test.request(test.rug_id, 6);
+
+    assert_eq!(
+        contract_error(test.client().try_store_buyout(&loan_id)),
+        Error::LoanNotFunded
+    );
+    assert_eq!(
+        contract_error(test.client().try_claim_rug(&loan_id)),
+        Error::LoanNotFunded
+    );
+}
+
+#[test]
+fn store_buyout_and_claim_require_the_correct_signer() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+
+    test.env.set_auths(&[]);
+    test.set_time(end_at);
+    assert!(test.client().try_store_buyout(&loan_id).is_err());
+
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+    assert!(test.client().try_claim_rug(&loan_id).is_err());
+}
+
+#[test]
+fn store_buyout_allowed_while_store_frozen() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.client().freeze_store(&test.store);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+
+    test.client().store_buyout(&loan_id);
+    assert_eq!(
+        test.client().get_loan(&loan_id).status,
+        LoanStatus::BoughtOut
+    );
 }
 
 #[test]

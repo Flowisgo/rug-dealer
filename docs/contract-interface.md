@@ -1,6 +1,6 @@
 # RugDealer contract interface
 
-Status: **milestone 1 (contract core)**. Buy-out and claim are milestone 2; testnet IDs are added in milestone 3.
+Status: **milestone 2 (buy-out path)**. Testnet IDs are added in milestone 3.
 
 The contract is a single Soroban contract at `contracts/rugdealer`. It records stores, rug certificates, loans, USDC payments, and settlement state. Rugs are **not** Stellar assets: each rug is an NFT-style record inside the contract with a contract-assigned `id`. USDC is a Stellar Asset Contract (SAC).
 
@@ -161,7 +161,7 @@ Emits `loan_funded` with the exact split and `end_at`.
 
 Signer: `Loan.weaver`.
 
-Only valid while the loan is `Funded`. Repayment is allowed at any time before a milestone 2 settlement (`store_buyout` or `claim_rug`), including after `end_at` and during the buy-out window.
+Only valid while the loan is `Funded`. Repayment is allowed at any time before `store_buyout` or `claim_rug`, including after `end_at` and throughout the buy-out window.
 
 Effects:
 - pulls exactly `principal` USDC from the weaver
@@ -171,6 +171,48 @@ Effects:
 - loan status `Repaid`
 
 Emits `loan_repaid`.
+
+### `store_buyout(loan_id)`
+
+Signer: `Loan.store`.
+
+Allowed only in the half-open window:
+
+```text
+end_at <= now < end_at + buyout_window_seconds
+```
+
+Before `end_at` returns `TooEarly`; at or after `end_at + buyout_window_seconds` returns `BuyoutWindowClosed`. The store may buy out even if its `frozen` flag is set.
+
+Effects:
+- pulls exactly `principal` USDC from the store
+- pays `principal + interest` to the investor
+- transfers rug ownership to the store, rug status `Free`
+- releases the store’s principal reservation
+- loan status `BoughtOut`
+
+Emits `store_bought_out`. The store and platform fees were already paid at funding and are not refunded.
+
+### `claim_rug(loan_id)`
+
+Signer: `Loan.investor`.
+
+Allowed only when:
+
+```text
+now >= end_at + buyout_window_seconds
+```
+
+Before that returns `BuyoutWindowOpen`. The two windows are half-open and never overlap: the store can buy out up to but not including the window end; the investor can claim from the window end onward.
+
+Effects:
+- pays the held `interest` to the investor; principal is not returned
+- transfers rug ownership to the investor, rug status `Free`
+- freezes the store
+- releases the store’s principal reservation
+- loan status `Claimed`
+
+Emits `rug_claimed` and emits `store_frozen` with reason `MissedBuyout` to flag the missed buy-out.
 
 ### `redeem(holder, rug_id)`
 
@@ -191,13 +233,13 @@ Emits `rug_redeemed`.
 - `quote(principal: i128, months: u32) -> Quote` — pure fee calculation using the stored config
 - `is_overdue(loan_id: u64) -> bool` — true only while the loan is `Funded` and `now >= end_at`; overdue is derived, never stored
 
-## Milestone 2 additions (planned)
+## Settlement windows
 
-- `store_buyout(loan_id)` — store signer, allowed when `end_at <= now < end_at + buyout_window_seconds`; pays principal, investor receives `principal + interest`, rug owner becomes the store, store principal is released.
-- `claim_rug(loan_id)` — investor signer, allowed when `now >= end_at + buyout_window_seconds`; investor receives held interest and rug ownership, store is frozen, store principal is released.
-- The two windows are half-open and never overlap.
-- `claim_rug` emits `store_frozen` with reason `MissedBuyout`.
-- There is no `mark_unpaid`; overdue is derived from ledger time.
+- `store_buyout` is allowed on the half-open interval `[end_at, end_at + buyout_window_seconds)`.
+- `claim_rug` is allowed on `[end_at + buyout_window_seconds, ∞)`.
+- `repay` is allowed from funding until either of those settlements runs.
+- The two windows never overlap: at exactly `end_at` the store can buy out; at exactly `end_at + buyout_window_seconds` only the investor can claim.
+- There is no `mark_unpaid`; overdue is derived from ledger time via `is_overdue`.
 
 ## Storage types
 
@@ -284,17 +326,15 @@ Events use the Soroban `#[contractevent]` macro, so their types are part of the 
 |---|---|---|---|
 | `store_registered` | `store` | `limit` | `register_store` |
 | `store_limit_set` | `store` | `limit` | `set_store_limit` |
-| `store_frozen` | `store` | `reason` (`Platform` or `MissedBuyout`) | `freeze_store`; milestone 2 `claim_rug` |
+| `store_frozen` | `store` | `reason` (`Platform` or `MissedBuyout`) | `freeze_store`; `claim_rug` |
 | `rug_minted` | `rug_id` | `store`, `weaver`, `description`, `price` | `mint_rug` |
 | `loan_requested` | `loan_id` | `rug_id`, `store`, `weaver`, `principal`, `months` | `request_loan` |
 | `loan_cancelled` | `loan_id` | `rug_id`, `weaver` | `cancel_request` |
 | `loan_funded` | `loan_id` | `rug_id`, `investor`, `principal`, `interest`, `platform_fee`, `store_fee`, `weaver_payout`, `end_at` | `fund_loan` |
 | `loan_repaid` | `loan_id` | `rug_id`, `weaver`, `investor`, `principal`, `interest` | `repay` |
+| `store_bought_out` | `loan_id` | `rug_id`, `store`, `investor`, `principal`, `interest` | `store_buyout` |
+| `rug_claimed` | `loan_id` | `rug_id`, `investor`, `store`, `interest` | `claim_rug` |
 | `rug_redeemed` | `rug_id` | `store`, `holder` | `redeem` |
-
-Milestone 2 adds:
-- `store_bought_out` — topic `loan_id`; data `rug_id`, `store`, `investor`, `principal`, `interest`
-- `rug_claimed` — topic `loan_id`; data `rug_id`, `investor`, `store`, `interest`
 
 ## Errors
 
@@ -315,19 +355,20 @@ Milestone 2 adds:
 | 13 | `StoreLimitExceeded` | Request or funding would exceed the store’s principal limit. |
 | 14 | `LoanNotFound` | No loan with that id. |
 | 15 | `LoanNotRequested` | Action needs a loan in `Requested` state. |
-| 16 | `LoanNotFunded` | Action needs a loan in `Funded` state. |
-| 17 | `LoanSettled` | Reserved for milestone 2 settlement paths. |
-| 18 | `TooEarly` | Reserved for milestone 2 buy-out timing. |
-| 19 | `BuyoutWindowClosed` | Reserved for milestone 2 buy-out timing. |
-| 20 | `BuyoutWindowOpen` | Reserved for milestone 2 claim timing. |
+| 16 | `LoanNotFunded` | Action needs a loan in `Funded` state, but it is `Requested` or `Cancelled`. |
+| 17 | `LoanSettled` | Loan was already settled (`Repaid`, `BoughtOut`, or `Claimed`). |
+| 18 | `TooEarly` | `store_buyout` called before `end_at`. |
+| 19 | `BuyoutWindowClosed` | `store_buyout` called at or after `end_at + buyout_window_seconds`. |
+| 20 | `BuyoutWindowOpen` | `claim_rug` called before `end_at + buyout_window_seconds`. |
 | 21 | `InvalidState` | Internal state invariant failed (for example, a rug/loan status mismatch). |
 
-## Guarantees covered by milestone 1 tests
+## Guarantees covered by tests
 
+Milestone 1:
 - Worked example reproduces exactly: 45 / 6 / 9 / 540 / 645.
 - Fee components round down and sum with the weaver payout to exactly the principal.
 - All Money Rules values come from constructor parameters.
-- Store cap is a USDC principal cap, not a loan count; it is reserved at request and released on cancel/repay (and on milestone 2 settlement paths).
+- Store cap is a USDC principal cap, not a loan count; it is reserved at request and released on cancel/repay.
 - Freeze blocks mint only.
 - One open loan per rug.
 - Request principal equals the rug price; months are whole and bounded.
@@ -335,6 +376,15 @@ Milestone 2 adds:
 - Repayment returns the rug and pays the investor `principal + interest`; it is allowed after `end_at`.
 - Redeem requires both holder and store auth, only works on a free rug, and is terminal.
 - No per-rug Stellar asset or trustline is used.
+
+Milestone 2:
+- `store_buyout` is tested at `end_at - 1`, `end_at`, `end_at + window - 1`, and `end_at + window`.
+- `claim_rug` is tested at the same four boundaries.
+- The buy-out/claim windows are half-open and never overlap.
+- `store_buyout` pays the investor `principal + interest`, gives the rug to the store, and releases principal.
+- `claim_rug` pays the investor the held interest, gives the rug to the investor, freezes the store, emits `store_frozen` with `MissedBuyout`, and releases principal.
+- `repay` remains available through the buy-out window and is rejected with `LoanSettled` after a buy-out or claim.
+- A store may buy out while frozen; a frozen store can still redeem a rug.
 
 ## Testnet deployment
 

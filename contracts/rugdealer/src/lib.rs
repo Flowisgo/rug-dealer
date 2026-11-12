@@ -224,6 +224,27 @@ pub struct RugRedeemed {
     pub holder: Address,
 }
 
+#[contractevent]
+pub struct StoreBoughtOut {
+    #[topic]
+    pub loan_id: u64,
+    pub rug_id: u64,
+    pub store: Address,
+    pub investor: Address,
+    pub principal: i128,
+    pub interest: i128,
+}
+
+#[contractevent]
+pub struct RugClaimed {
+    #[topic]
+    pub loan_id: u64,
+    pub rug_id: u64,
+    pub investor: Address,
+    pub store: Address,
+    pub interest: i128,
+}
+
 #[contract]
 pub struct RugDealer;
 
@@ -309,6 +330,14 @@ fn save_loan(env: &Env, loan: &Loan) {
     env.storage()
         .persistent()
         .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+}
+
+fn require_funded(loan: &Loan) -> Result<(), Error> {
+    match &loan.status {
+        LoanStatus::Funded => Ok(()),
+        LoanStatus::Repaid | LoanStatus::BoughtOut | LoanStatus::Claimed => Err(Error::LoanSettled),
+        _ => Err(Error::LoanNotFunded),
+    }
 }
 
 fn calculate_quote(cfg: &Config, principal: i128, months: u32) -> Result<Quote, Error> {
@@ -664,9 +693,7 @@ impl RugDealer {
         let cfg = config(&env);
         let mut loan = get_loan(&env, loan_id)?;
         loan.weaver.require_auth();
-        if loan.status != LoanStatus::Funded {
-            return Err(Error::LoanNotFunded);
-        }
+        require_funded(&loan)?;
 
         let mut rug = get_rug(&env, loan.rug_id)?;
         if rug.status != RugStatus::Locked {
@@ -700,6 +727,120 @@ impl RugDealer {
             weaver: loan.weaver,
             investor,
             principal: loan.principal,
+            interest: loan.interest,
+        }
+        .publish(&env);
+        Ok(())
+    }
+
+    pub fn store_buyout(env: Env, loan_id: u64) -> Result<(), Error> {
+        let cfg = config(&env);
+        let mut loan = get_loan(&env, loan_id)?;
+        loan.store.require_auth();
+        require_funded(&loan)?;
+
+        let end_at = loan.end_at.ok_or(Error::InvalidState)?;
+        let now = env.ledger().timestamp();
+        if now < end_at {
+            return Err(Error::TooEarly);
+        }
+        let window_end = end_at
+            .checked_add(cfg.buyout_window_seconds)
+            .ok_or(Error::InvalidAmount)?;
+        if now >= window_end {
+            return Err(Error::BuyoutWindowClosed);
+        }
+
+        let mut rug = get_rug(&env, loan.rug_id)?;
+        if rug.status != RugStatus::Locked {
+            return Err(Error::InvalidState);
+        }
+        let mut store = get_store(&env, &loan.store)?;
+        store.open_principal = store
+            .open_principal
+            .checked_sub(loan.principal)
+            .ok_or(Error::InvalidState)?;
+        let investor = loan.investor.clone().ok_or(Error::InvalidState)?;
+        let investor_payout = loan
+            .principal
+            .checked_add(loan.interest)
+            .ok_or(Error::InvalidAmount)?;
+
+        loan.status = LoanStatus::BoughtOut;
+        rug.owner = loan.store.clone();
+        rug.status = RugStatus::Free;
+        save_store(&env, &store);
+        save_rug(&env, &rug);
+        save_loan(&env, &loan);
+
+        let usdc = token::Client::new(&env, &cfg.usdc);
+        let contract = env.current_contract_address();
+        usdc.transfer(&loan.store, &contract, &loan.principal);
+        usdc.transfer(&contract, &investor, &investor_payout);
+
+        StoreBoughtOut {
+            loan_id,
+            rug_id: loan.rug_id,
+            store: loan.store,
+            investor,
+            principal: loan.principal,
+            interest: loan.interest,
+        }
+        .publish(&env);
+        Ok(())
+    }
+
+    pub fn claim_rug(env: Env, loan_id: u64) -> Result<(), Error> {
+        let cfg = config(&env);
+        let mut loan = get_loan(&env, loan_id)?;
+        require_funded(&loan)?;
+        let investor = loan.investor.clone().ok_or(Error::InvalidState)?;
+        investor.require_auth();
+
+        let end_at = loan.end_at.ok_or(Error::InvalidState)?;
+        let window_end = end_at
+            .checked_add(cfg.buyout_window_seconds)
+            .ok_or(Error::InvalidAmount)?;
+        if env.ledger().timestamp() < window_end {
+            return Err(Error::BuyoutWindowOpen);
+        }
+
+        let mut rug = get_rug(&env, loan.rug_id)?;
+        if rug.status != RugStatus::Locked {
+            return Err(Error::InvalidState);
+        }
+        let mut store = get_store(&env, &loan.store)?;
+        store.open_principal = store
+            .open_principal
+            .checked_sub(loan.principal)
+            .ok_or(Error::InvalidState)?;
+        store.frozen = true;
+
+        loan.status = LoanStatus::Claimed;
+        rug.owner = investor.clone();
+        rug.status = RugStatus::Free;
+        save_store(&env, &store);
+        save_rug(&env, &rug);
+        save_loan(&env, &loan);
+
+        if loan.interest > 0 {
+            token::Client::new(&env, &cfg.usdc).transfer(
+                &env.current_contract_address(),
+                &investor,
+                &loan.interest,
+            );
+        }
+
+        StoreFrozen {
+            store: loan.store.clone(),
+            reason: FrozenReason::MissedBuyout,
+        }
+        .publish(&env);
+        RugClaimed {
+            loan_id,
+            rug_id: loan.rug_id,
+            investor,
+            store: loan.store,
             interest: loan.interest,
         }
         .publish(&env);
