@@ -646,6 +646,29 @@ a.ticket-no:hover {
 .notice + .notice {
   margin-top: 10px;
 }
+/* Neutral note: nothing wrong, nothing to do. */
+.notice.quiet {
+  border-color: var(--rule);
+  border-left-width: 1px;
+}
+/* Done: a hand-over went through. Indigo, the colour of settled things. */
+.handed-over {
+  border: 1px solid var(--indigo);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+.handed-over-title {
+  color: var(--indigo);
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+.handed-over .btn-row {
+  gap: 6px 18px;
+}
 .frozen-banner {
   background: var(--madder);
   color: var(--paper);

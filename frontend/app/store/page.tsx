@@ -1,7 +1,7 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BuyoutButton, CoSignPanel } from "@/components/rug-actions";
+import { BuyoutButton, CoSignPanel, HandedOver } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline } from "@/components/money";
 import { whenSec } from "@/components/sentence";
@@ -30,7 +30,7 @@ export default function StorePage() {
       {lookingAs && <LookingAs address={lookingAs} />}
       {handover && data && (
         <div style={{ marginTop: 24 }}>
-          <CoSignPanel initial={handover} rugs={data.rugs} />
+          <CoSignPanel initial={handover} rugs={data.rugs} events={data.events} />
         </div>
       )}
       {!viewer ? (
@@ -95,7 +95,7 @@ function StoreDesk({ address, data, hasHandover }: { address: string; data: Ledg
 
       {!hasHandover && (
         <Section label="Hand a rug over">
-          <CoSignPanel initial={null} rugs={data.rugs} titled={false} />
+          <CoSignPanel initial={null} rugs={data.rugs} events={data.events} titled={false} />
         </Section>
       )}
 
@@ -207,6 +207,9 @@ function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bi
 }
 
 function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[] }) {
+  // Kept across ledger refreshes (the ticket stays mounted), so the success
+  // state survives the rug turning Redeemed.
+  const [closedHash, setClosedHash] = useState<string | null>(null);
   const open = openLoanFor(rug.id, loans);
   const last = latestLoanFor(rug.id, loans);
   let tag: { text: string; tone: Tone } = rugLabel(rug);
@@ -223,7 +226,8 @@ function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[
         </KV>
         {open && <KV k="Loan">{LOAN_STATUS_TEXT[open.status]}{open.status === "Funded" ? `, ${monthsText(open.months)}` : ""}</KV>}
       </div>
-      {rug.status === "Free" && rug.owner === store && (
+      {closedHash && <HandedOver rugId={rug.id} holder={store} hash={closedHash} self />}
+      {!closedHash && rug.status === "Free" && rug.owner === store && (
         <>
           <p className="small muted">This rug is yours after the buy-out. Close its certificate when the rug leaves the store.</p>
           <ActionButton
@@ -234,8 +238,11 @@ function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[
               body: "The certificate is destroyed and can't be used to borrow again. Do this when the rug leaves the store.",
               yes: "Close it",
             }}
-            done="Closed."
-            run={(onStep) => redeemOwnRug(store, rug.id, onStep)}
+            run={async (onStep) => {
+              const r = await redeemOwnRug(store, rug.id, onStep);
+              setClosedHash(r.hash);
+              return r;
+            }}
           />
         </>
       )}

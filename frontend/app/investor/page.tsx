@@ -40,6 +40,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
   const requests = data.loans.filter((l) => l.status === "Requested").sort((a, b) => Number(b.id - a.id));
   const mine = data.loans.filter((l) => l.investor === investor).sort((a, b) => Number(b.id - a.id));
   const holding = data.rugs.filter((r) => r.owner === investor && r.status === "Free");
+  const collected = data.rugs.filter((r) => r.owner === investor && r.status === "Redeemed");
   const t = investorTotals(data.loans, investor);
 
   return (
@@ -104,6 +105,26 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
                 </div>
                 <p className="small muted">You took this rug when the store missed its buy-out. Collect it from the store.</p>
                 <HandoverPanel rug={r} holder={investor} />
+              </RugTicket>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {collected.length > 0 && (
+        <Section label="Earlier rugs" count={collected.length}>
+          <div className="tickets">
+            {collected.map((r) => (
+              <RugTicket key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="done">Collected</Tag>}>
+                <div className="ticket-meta">
+                  <KV k="From">
+                    <Party address={r.store} />
+                  </KV>
+                  <KV k="Store's price">
+                    <MoneyBlock units={r.price} />
+                  </KV>
+                </div>
+                <p className="small muted">You collected this rug from the store. Its certificate is closed.</p>
               </RugTicket>
             ))}
           </div>

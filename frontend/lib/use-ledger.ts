@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { getConfig, listLoans, listRugs, listStores, usdcBalance, type Config, type Loan, type Rug, type Store } from "./contract";
 import { fetchEvents, type AppEvent } from "./events";
 import { messageOf } from "./errors";
+import { forgetHandedOver } from "./handover";
 
 export type Ledger = {
   config: Config;
@@ -40,6 +41,8 @@ async function load(): Promise<void> {
         (e) => ({ events: [] as AppEvent[], trimmed: false, error: messageOf(e) }),
       ),
     ]);
+    // A rug that has been handed over needs no saved hand-over code any more.
+    forgetHandedOver(rugs);
     const seen = new Set<string>();
     const frozenReason: Ledger["frozenReason"] = {};
     for (const e of ev.events) {

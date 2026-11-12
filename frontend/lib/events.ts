@@ -141,6 +141,17 @@ export function plain(parts: Part[], name: (a: string) => string, money: (u: big
 
 export const rugIdOf = (e: AppEvent): bigint | null => ("rugId" in e ? e.rugId : null);
 
+export type RedeemEvent = Extract<AppEvent, { kind: "rug_redeemed" }>;
+
+/** The hand-over (redeem) event for a rug, if the RPC still keeps it. */
+export function findRedeem(rugId: bigint, events: AppEvent[]): RedeemEvent | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.kind === "rug_redeemed" && e.rugId === rugId) return e;
+  }
+  return null;
+}
+
 /** All contract events still kept by the RPC, oldest first. */
 export async function fetchEvents(): Promise<{ events: AppEvent[]; trimmed: boolean }> {
   const srv = server();

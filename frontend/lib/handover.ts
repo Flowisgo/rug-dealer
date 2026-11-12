@@ -14,7 +14,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { CONTRACT_ID, NETWORK_PASSPHRASE } from "./deployment";
 import { AppError, explainError } from "./errors";
-import { addr, server, u64 } from "./contract";
+import { addr, server, u64, type Rug } from "./contract";
 import { invoke, type TxResult, type TxStep } from "./tx";
 import { assertSigner, signAuth } from "./wallet";
 
@@ -31,6 +31,51 @@ export type Handover = {
 
 /** ~24 hours of 5-second ledgers. */
 const VALID_LEDGERS = 17_280;
+
+/** Where the holder's signed code is kept between page loads. */
+export const handoverKey = (rugId: bigint | string) => `rugdealer:handover:${rugId}`;
+
+export type HandoverCheck =
+  | "unknown-rug" // no such rug (yet) in this deployment
+  | "wrong-store" // the code names another store than the rug's
+  | "handed-over" // the rug is already Redeemed: nothing more to do
+  | "not-holder" // the code's holder no longer holds the rug
+  | "ready"; // the store can sign and submit
+
+/** What the store should see for a hand-over code, given the rug's current record. */
+export function checkHandover(h: Handover, rug: Rug | undefined): HandoverCheck {
+  if (!rug) return "unknown-rug";
+  if (rug.store !== h.store) return "wrong-store";
+  if (rug.status === "Redeemed") return "handed-over";
+  if (rug.owner !== h.holder) return "not-holder";
+  return "ready";
+}
+
+type KeyStore = Pick<Storage, "getItem" | "removeItem">;
+const browserStorage = (): KeyStore | null => {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** Drop saved hand-over codes for rugs that have been handed over.
+ * Returns the ids it cleared. */
+export function forgetHandedOver(rugs: Rug[], storage: KeyStore | null = browserStorage()): bigint[] {
+  if (!storage) return [];
+  const cleared: bigint[] = [];
+  for (const r of rugs) {
+    if (r.status !== "Redeemed") continue;
+    try {
+      if (storage.getItem(handoverKey(r.id)) !== null) {
+        storage.removeItem(handoverKey(r.id));
+        cleared.push(r.id);
+      }
+    } catch {}
+  }
+  return cleared;
+}
 
 export function entryAddress(e: xdr.SorobanAuthorizationEntry): string | null {
   const c = e.credentials as unknown as { type: string; address?: { address: unknown }; addressV2?: { address: unknown } };

@@ -1,12 +1,24 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { quote as quoteOnChain, u32, u64, addr, type Config, type Loan, type Rug, type Store } from "@/lib/contract";
 import { messageOf } from "@/lib/errors";
-import { decodeHandover, encodeHandover, signHandover, submitHandover, type Handover } from "@/lib/handover";
+import { txUrl } from "@/lib/deployment";
+import { findRedeem, type AppEvent } from "@/lib/events";
+import {
+  checkHandover,
+  decodeHandover,
+  encodeHandover,
+  handoverKey,
+  signHandover,
+  submitHandover,
+  type Handover,
+} from "@/lib/handover";
 import { quoteLocally, rugNo, usdcLabel, type Quote } from "@/lib/money";
 import { monthsText } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { MoneyInline } from "./money";
+import { when } from "./sentence";
 import { ActionButton, LedgerRows, Party, useSignerCheck } from "./ui";
 import { useWallet } from "./wallet";
 
@@ -85,8 +97,6 @@ export function BorrowForm({ rug, config, store, weaver }: { rug: Rug; config: C
   );
 }
 
-const HANDOVER_KEY = (rugId: bigint) => `rugdealer:handover:${rugId}`;
-
 /** Holder signs their half of a rug hand-over and gets a link for the store. */
 export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   const check = useSignerCheck(holder);
@@ -97,7 +107,7 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(HANDOVER_KEY(rug.id));
+      const saved = localStorage.getItem(handoverKey(rug.id));
       if (saved) {
         const d = decodeHandover(saved);
         if (d.holder === holder) setH(d);
@@ -112,7 +122,7 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
       const d = await signHandover(holder, rug.id, rug.store);
       setH(d);
       try {
-        localStorage.setItem(HANDOVER_KEY(rug.id), encodeHandover(d));
+        localStorage.setItem(handoverKey(rug.id), encodeHandover(d));
       } catch {}
     } catch (e) {
       setErr(messageOf(e));
@@ -163,11 +173,72 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   );
 }
 
+/** Success state after a hand-over is signed and confirmed. Indigo, not green. */
+export function HandedOver({ rugId, holder, hash, self = false }: { rugId: bigint; holder: string; hash: string; self?: boolean }) {
+  return (
+    <div className="handed-over" role="status">
+      <p className="handed-over-title">
+        Rug handed over. Certificate <span className="mono">{rugNo(rugId)}</span> is closed.
+      </p>
+      <p>
+        {self ? (
+          <>
+            <Party address={holder} /> held it after the buy-out; it's off the books now.
+          </>
+        ) : (
+          <>
+            Collected by <Party address={holder} />.
+          </>
+        )}
+      </p>
+      <p className="btn-row small">
+        <a href={txUrl(hash)} target="_blank" rel="noreferrer">
+          See the transaction
+        </a>
+        <Link href={`/rug/${rugId}`}>Open the rug's history</Link>
+      </p>
+    </div>
+  );
+}
+
+/** Neutral note when a code is opened after the rug was already handed over. */
+function AlreadyHandedOver({ rug, events }: { rug: Rug; events: AppEvent[] }) {
+  const ev = findRedeem(rug.id, events);
+  return (
+    <div className="notice quiet" role="status">
+      <p>
+        Rug <span className="mono">{rugNo(rug.id)}</span> was already handed over to <Party address={ev?.holder ?? rug.owner} />
+        {ev ? (
+          <>
+            {" "}
+            on <time className="mono" dateTime={ev.at}>{when(ev.at)}</time>
+          </>
+        ) : null}
+        . Nothing more to do.
+      </p>
+      <p className="small" style={{ marginTop: 6 }}>
+        <Link href={`/rug/${rug.id}`}>Open the rug's history</Link>
+      </p>
+    </div>
+  );
+}
+
 /** Store: open a holder's hand-over code, check it, co-sign and submit. */
-export function CoSignPanel({ initial, rugs, titled = true }: { initial: string | null; rugs: Rug[]; titled?: boolean }) {
+export function CoSignPanel({
+  initial,
+  rugs,
+  events,
+  titled = true,
+}: {
+  initial: string | null;
+  rugs: Rug[];
+  events: AppEvent[];
+  titled?: boolean;
+}) {
   const w = useWallet();
   const [text, setText] = useState(initial ?? "");
-  const [done, setDone] = useState(false);
+  // Set once this session's "Sign and hand over" is confirmed.
+  const [doneHash, setDoneHash] = useState<string | null>(null);
   let parsed: Handover | null = null;
   let parseErr: string | null = null;
   if (text.trim()) {
@@ -178,48 +249,74 @@ export function CoSignPanel({ initial, rugs, titled = true }: { initial: string 
     }
   }
   const rug = parsed ? rugs.find((r) => r.id === BigInt(parsed!.rug)) : undefined;
+  const state = parsed ? checkHandover(parsed, rug) : null;
 
   return (
     <div className="panel">
       {titled && <p className="panel-title">Hand a rug over</p>}
-      <label className="field">
-        <span>Hand-over code from the rug's holder</span>
-        <textarea
-          className="input code-box"
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            setDone(false);
-          }}
-          placeholder="Paste the code, or open the link the holder sent you"
-        />
-      </label>
+      {!doneHash && (
+        <label className="field">
+          <span>Hand-over code from the rug's holder</span>
+          <textarea
+            className="input code-box"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste the code, or open the link the holder sent you"
+          />
+        </label>
+      )}
       {parseErr && <p className="error-text">{parseErr}</p>}
-      {parsed && (
-        <div style={{ display: "grid", gap: 12 }}>
-          <p>
-            <Party address={parsed.holder} /> wants to collect rug <strong className="mono">{rugNo(BigInt(parsed.rug))}</strong>
-            {rug ? <> ({rug.description})</> : null}. Hand the rug over, then sign to close its certificate.
+      {parsed && doneHash && (
+        <>
+          <HandedOver rugId={BigInt(parsed.rug)} holder={parsed.holder} hash={doneHash} />
+          <p className="small" style={{ marginTop: 12 }}>
+            <button
+              className="btn btn-quiet"
+              onClick={() => {
+                setDoneHash(null);
+                setText("");
+              }}
+            >
+              Hand over another rug
+            </button>
           </p>
-          {rug && rug.store !== parsed.store && <p className="error-text">This code names a different store than the rug's store.</p>}
-          {rug && rug.status === "Redeemed" && <p className="notice small">This rug has already been collected.</p>}
-          {w.address && w.address !== parsed.store && (
-            <p className="small muted">
-              This needs <Party address={parsed.store} />. Switch accounts in Freighter.
+        </>
+      )}
+      {parsed && !doneHash && (
+        <div style={{ display: "grid", gap: 12 }}>
+          {state === "handed-over" && rug ? (
+            <AlreadyHandedOver rug={rug} events={events} />
+          ) : (
+            <p>
+              <Party address={parsed.holder} /> wants to collect rug <strong className="mono">{rugNo(BigInt(parsed.rug))}</strong>
+              {rug ? <> ({rug.description})</> : null}. Hand the rug over, then sign to close its certificate.
             </p>
           )}
-          {!done && rug?.status !== "Redeemed" && (
-            <ActionButton
-              primary
-              label="Sign and hand over"
-              signer={parsed.store}
-              done="Handed over. The certificate is closed."
-              run={async (onStep) => {
-                const r = await submitHandover(parsed!, onStep);
-                setDone(true);
-                return r;
-              }}
-            />
+          {state === "unknown-rug" && <p className="error-text">There's no rug with this number yet. Refresh, or check the code.</p>}
+          {state === "wrong-store" && <p className="error-text">This code names a different store than the rug's store.</p>}
+          {state === "not-holder" && (
+            <p className="error-text">
+              <Party address={parsed.holder} /> no longer holds this rug, so this code can't be used. Ask the current holder for a new one.
+            </p>
+          )}
+          {state === "ready" && (
+            <>
+              {w.address && w.address !== parsed.store && (
+                <p className="small muted">
+                  This needs <Party address={parsed.store} />. Switch accounts in Freighter.
+                </p>
+              )}
+              <ActionButton
+                primary
+                label="Sign and hand over"
+                signer={parsed.store}
+                run={async (onStep) => {
+                  const r = await submitHandover(parsed!, onStep);
+                  setDoneHash(r.hash);
+                  return r;
+                }}
+              />
+            </>
           )}
         </div>
       )}
