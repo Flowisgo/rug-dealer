@@ -2,7 +2,7 @@
 
 Weavers can borrow against a finished rug instead of selling it cheaply. This is a working prototype on Stellar Testnet: a Soroban contract and a web app with one desk for each role.
 
-**Live app:** _added after the Vercel deployment_
+**Live app:** [rugdealer.vercel.app](https://rugdealer.vercel.app)
 **Contract on Stellar Testnet:** [`CB5KLLH5…KOVR`](https://stellar.expert/explorer/testnet/contract/CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR)
 
 ![The RugDealer landing page with the worked example](frontend/screenshots/landing-1280.jpg)
@@ -158,7 +158,14 @@ To deploy a fresh contract and run the scripted repay, buy-out and claim scenari
 
 ### Deploying the web app
 
-On Vercel, import the repository and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed. After a contract redeploy, update `frontend/lib/deployment.ts` with the new contract id and deploy ledger.
+The live app is deployed from `frontend/` with the Vercel CLI:
+
+```bash
+cd frontend
+npx vercel deploy --prod
+```
+
+To deploy from GitHub instead, import the repository on Vercel and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed. After a contract redeploy, update `frontend/lib/deployment.ts` with the new contract id and deploy ledger, then deploy again.
 
 ## Repository layout
 
