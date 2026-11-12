@@ -1,0 +1,15 @@
+# Rust build output
+target/
+
+# Soroban test snapshots
+test_snapshots/
+
+# Stellar/Soroban local state and keys
+.soroban/
+.stellar/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
