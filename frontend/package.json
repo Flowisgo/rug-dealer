@@ -10,6 +10,11 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "smoke": "vitest run --config vitest.testnet.config.ts",
+    "predev": "npm run sync-deployment",
+    "prebuild": "npm run sync-deployment",
+    "pretest": "npm run sync-deployment",
+    "pretypecheck": "npm run sync-deployment",
+    "presmoke": "npm run sync-deployment",
     "sync-deployment": "node scripts/sync-deployment.mjs"
   },
   "dependencies": {
@@ -23,6 +28,7 @@
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "jsdom": "31.0.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   }

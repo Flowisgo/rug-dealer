@@ -29,10 +29,12 @@ The price is the store's own offer to buy the rug, typically around 40% of what 
 4. **Funding.** An investor funds the loan in USDC. The contract keeps the interest for the whole term, takes the platform fee and the store fee, and pays the rest out. The converter turns it into local currency for the weaver.
 5. **Close.** The loan ends in one of two ways:
    - **Repay.** By the end date, the weaver pays back exactly the loan amount in one payment, in local currency. The converter turns it into USDC, which goes into the contract. The token unlocks, and the weaver redeems it to collect the rug, or keeps it to borrow again. The rug is theirs to sell to a real buyer whenever they find one.
-   - **Store buys.** If the loan is still open on its end date, the store has 7 days to pay the loan amount into the contract, and the token passes to the store. Until that payment lands, the weaver can still repay.
+   - **Store buys.** If the loan is still open on its end date, the store has 7 days to pay the loan amount into the contract, and the token passes to the store. The weaver can still repay until either buy-out or investor claim confirms.
 6. **Payout.** Either way, the contract pays the investor the loan amount plus the interest it held.
 
 Interest is for the full chosen term and is not refunded if the weaver repays early.
+
+The production proposal uses a 30-day month and a 7-day buy-out window. **The deployed Testnet demo uses 60 seconds for each.** Timed actions follow closed-ledger time.
 
 ## Money Rules
 
@@ -47,7 +49,7 @@ Interest is for the full chosen term and is not refunded if the weaver repays ea
 | Store buy-out | The loan amount, paid by the store if the loan is not repaid | Contract, then investor |
 | Store limit | The total of open loans at one store may not exceed a cap set by the platform | |
 | Conversion fee | Set by the anchor, planned at 2% each way | Converter |
-| Network fees | Under $0.10 for a whole loan, paid by the platform | Stellar network |
+| Network fees | Paid in XLM by each transaction signer; the prototype does not sponsor them | Stellar network |
 | Funding | One investor funds one whole loan | |
 
 ## When Things Go Wrong
@@ -75,8 +77,10 @@ A rug that a real buyer would pay about $1,500 for. The store offers $600, its n
 
 | How it ends | Weaver | Store | Investor |
 | --- | --- | --- | --- |
-| Weaver repays at month 6 | Pays $600, gets the rug back. Total cost $60 | Earned $9 | Gets $645 |
-| No repayment by month 6 | Pays nothing more. Keeps the $540 | Pays $600, owns the rug | Gets $645 |
+| Weaver repays at month 6 | Pays $600, gets the rug back. Total cost $60 | Earned $9 | Receives or is credited $645 |
+| No repayment by month 6 | Pays nothing more. Keeps the $540 | Pays $600, owns the rug | Receives or is credited $645 |
+
+Claim after the missed buy-out instead gives the investor the rug plus $45 interest (or backed credit), without refunding the $600 principal. The store freezes.
 
 ## Formulas
 
@@ -85,7 +89,9 @@ A rug that a real buyer would pay about $1,500 for. The store offers $600, its n
 - Platform fee = 0.01 × loan. Store fee = 0.0025 × loan × months
 - Weaver receives = loan − interest − platform fee − store fee
 - Weaver repays = loan. Store buy-out = loan
-- Investor receives = loan + interest, in every case
+- Repayment or buy-out: investor receives loan + interest, or the same amount as backed credit if delivery fails.
+- Claim: investor owns the rug plus receives (or is credited) held interest; principal is not refunded.
+- Loan closure does not guarantee wallet delivery. An investor withdraws held credit after restoring receipt capability.
 - Open loans at a store ≤ that store's limit
 
 ---
@@ -107,7 +113,7 @@ A rug that a real buyer would pay about $1,500 for. The store offers $600, its n
 | `request_loan(token, months)` | Token owner | Locks the token, opens a request for exactly the price; refused if months > 12, the token is already locked, or the store would exceed its limit |
 | `cancel_request(loan)` | Weaver | Unlocks the token if not yet funded |
 | `fund_loan(loan)` | Investor | Transfers the loan amount in; contract holds interest, pays platform fee, store fee and the remainder to the weaver; sets the end date |
-| `repay(loan)` | Weaver | Accepts exactly the loan amount; pays investor loan + interest; unlocks the token. Allowed until the store's buy-out lands |
+| `repay(loan)` | Weaver | Accepts exactly the loan amount; pays investor loan + interest; unlocks the token. Allowed until buy-out or investor claim confirms |
 | `store_buyout(loan)` | The rug's store | After the end date: accepts the loan amount, pays investor loan + interest, moves the token to the store |
 | `claim_rug(loan)` | Investor | 7 days after the end date with no buy-out: pays investor the held interest, moves the token to the investor, flags the store |
 | `redeem(token)` | Token owner + store | Store confirms hand-over; token destroyed |
@@ -152,7 +158,7 @@ Settled while building milestones 1–3, where the guide was silent or ambiguous
 1. The v2 contract was built fresh from `main` at `contracts/rugdealer`. The `codex/*` branches are an older design.
 2. `claim_rug` pays the investor the held interest plus the rug token. "Investor receives exactly loan + interest" applies to the repay and buy-out paths.
 3. Rounding: interest, platform fee and store fee each round down. The remainder goes to the weaver, so funded amount = interest + platform fee + store fee + weaver payout exactly.
-4. Every Money Rules number is a deployment parameter: `interest_bps_per_year` (1500), `platform_fee_bps` (100), `store_fee_bps_per_month` (25), `max_months` (12), `month_seconds` (30 days; the demo deployment uses 60 seconds), `buyout_window_seconds` (7 days; the demo uses a short window), and a `fee_recipient` address.
+4. Every Money Rules number is a deployment parameter: `interest_bps_per_year` (1500), `platform_fee_bps` (100), `store_fee_bps_per_month` (25), `max_months` (12), `month_seconds` (30 days; the demo deployment uses 60 seconds), `buyout_window_seconds` (7 days; the demo uses 60 seconds), and a `fee_recipient` address.
 5. Loan length is whole months, 1 to `max_months`.
 6. The store limit is a USDC amount (`open_principal`), not a loan count. A loan counts from `request_loan` and is released on `cancel_request`, `repay`, `store_buyout` or `claim_rug`.
 7. Fees are taken at `fund_loan`.

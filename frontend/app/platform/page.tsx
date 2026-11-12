@@ -1,23 +1,29 @@
 "use client";
+import { HAS_STORE_INDEX } from "@/lib/deployment";
 import { useState } from "react";
 import { StrKey } from "@stellar/stellar-sdk";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock } from "@/components/money";
 import { ActionButton, Empty, ErrorBox, KV, Loading, Party, Section, Tag } from "@/components/ui";
 import { addr, i128, type Store } from "@/lib/contract";
-import { amountProblem, formatLocal, parseUsdc, usdcLabel } from "@/lib/money";
+import { amountProblem, AMOUNT_GUIDANCE, formatLocal, parseUsdc, usdcLabel } from "@/lib/money";
 import { invoke } from "@/lib/tx";
 import { useLedger, type Ledger } from "@/lib/use-ledger";
 
 export default function PlatformPage() {
   const { viewer, lookingAs } = useViewer();
-  const { data, error, refresh } = useLedger();
+  const [lookup, setLookup] = useState("");
+  const { data, error, refresh } = useLedger(StrKey.isValidEd25519PublicKey(lookup) ? lookup : null);
   return (
     <>
       <PageHead
         title="Platform desk"
         lede="Approve which stores can write rug certificates, set how much each may have lent out at once, and freeze a store that breaks the rules."
       />
+      {!HAS_STORE_INDEX && <label className="field" style={{marginTop:20}}>
+        <span>This deployment predates the durable store index. Older registrations may be missing from event history. Look up a store directly:</span>
+        <input className="input mono" value={lookup} onChange={(e) => setLookup(e.target.value.trim())} placeholder="Store public address" />
+      </label>}
       {lookingAs && <LookingAs address={lookingAs} />}
       {!viewer ? (
         <NoViewer role="platform" what="manage stores" />
@@ -99,7 +105,7 @@ function StoreCard({ store, admin, reason }: { store: Store; admin: string; reas
       <div className="split">
         <div>
           <label className="field" style={{ marginBottom: 10 }}>
-            <span>New limit (USDC)</span>
+            <span>New limit (USDC)</span><span className="hint">{AMOUNT_GUIDANCE}</span>
             <input className="input mono" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="5000" />
             {units !== null && limit !== "" && <span className="hint mono">≈ {formatLocal(units)} TRY</span>}
             {units === null && limit !== "" && <span className="error-text">{amountProblem(limit)}</span>}
@@ -164,7 +170,7 @@ function ApproveForm({ admin, known }: { admin: string; known: string[] }) {
       </label>
       <label className="field">
         <span>Limit: most it may have lent out at once (USDC)</span>
-        <input className="input mono" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
+        <input className="input mono" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} /><span className="hint">{AMOUNT_GUIDANCE}</span>
         {units !== null && <span className="hint mono">≈ {formatLocal(units)} TRY</span>}
         {units === null && limit !== "" && <span className="error-text">{amountProblem(limit)}</span>}
       </label>

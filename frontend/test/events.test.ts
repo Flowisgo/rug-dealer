@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { xdr } from "@stellar/stellar-sdk";
 import { ACCOUNTS } from "../lib/deployment";
-import { decodeEvent, decodeNative, describe as sentence, heldPayoutLoans, heldPayoutTxs, plain, type AppEvent } from "../lib/events";
+import { decodeEvent, decodeNative, describe as sentence, heldPayoutTxs, plain, type AppEvent } from "../lib/events";
 import { formatUsdc } from "../lib/money";
 import { partyName } from "../lib/names";
 import fixtures from "./testnet-events.json";
@@ -25,7 +25,7 @@ describe("held investor payouts", () => {
     const e = decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 7n, amount: 6_450_000_000n }, META);
     expect(e).toMatchObject({ kind: "investor_credited", investor: ACCOUNTS.investor, loanId: 7n, amount: 6_450_000_000n });
     expect(text(e)).toBe(
-      "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so the contract is holding it for them to withdraw. The loan is closed.",
+      "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so it was held as credit. This closes the loan, not the payout delivery; a later withdrawal delivers it.",
     );
   });
   it("doesn't say the investor 'got back' a payout the contract had to hold", () => {
@@ -39,16 +39,15 @@ describe("held investor payouts", () => {
     const credited = decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 7n, amount: 6_450_000_000n }, m);
     const held = heldPayoutTxs([repaid, credited]);
     expect(plain(sentence(repaid, held), partyName, (u) => `${formatUsdc(u)} USDC`)).toBe(
-      "Ayşe the weaver repaid 600.00 USDC on rug No. 0004. Deniz the investor's wallet couldn't take the 645.00 USDC, so the contract is holding it until they withdraw it.",
+      "Ayşe the weaver repaid 600.00 USDC on rug No. 0004. Deniz the investor had a payout of 645.00 USDC held as credit at settlement.",
     );
-    expect(text(repaid)).toMatch(/got back 645.00 USDC/);
-    expect(heldPayoutLoans([repaid, credited])).toEqual(new Set([7n]));
+    expect(text(repaid)).toMatch(/settled payout of 645.00 USDC/);
   });
   it("says a claim's interest is held when it is", () => {
     const m = { ...META, txHash: "ef".repeat(32) };
     const claimed = decodeNative(["rug_claimed", 9n], { rug_id: 5n, investor: ACCOUNTS.investor, store: ACCOUNTS.store2, interest: 75_000_000n }, m);
     const held = heldPayoutTxs([decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 9n, amount: 75_000_000n }, m)]);
-    expect(plain(sentence(claimed, held), partyName, (u) => `${formatUsdc(u)} USDC`)).toMatch(/interest is held by the contract until they withdraw it/);
+    expect(plain(sentence(claimed, held), partyName, (u) => `${formatUsdc(u)} USDC`)).toMatch(/7.50 USDC held as credit at settlement/);
   });
   it("decodes credit_withdrawn", () => {
     const e = decodeNative(["credit_withdrawn", ACCOUNTS.investor], { amount: 6_450_000_000n }, META);
@@ -102,13 +101,13 @@ describe("decoding real testnet events", () => {
 
   it("loan_repaid", () => {
     const e = fromFixture("loan_repaid");
-    expect(text(e)).toBe("Ayşe the weaver repaid 600.00 USDC on rug No. 0001. Deniz the investor got back 645.00 USDC.");
+    expect(text(e)).toBe("Ayşe the weaver repaid 600.00 USDC on rug No. 0001. Deniz the investor has a settled payout of 645.00 USDC.");
   });
 
   it("store_bought_out", () => {
     const e = fromFixture("store_bought_out");
     expect(e).toMatchObject({ kind: "store_bought_out", rugId: 2n, store: ACCOUNTS.store });
-    expect(text(e)).toBe("Kaya Rug House bought rug No. 0002 for 600.00 USDC. Deniz the investor got back 607.50 USDC.");
+    expect(text(e)).toBe("Kaya Rug House bought rug No. 0002 for 600.00 USDC. Deniz the investor has a settled payout of 607.50 USDC.");
   });
 
   it("store_frozen decodes the reason enum", () => {
@@ -120,7 +119,7 @@ describe("decoding real testnet events", () => {
   it("rug_claimed", () => {
     const e = fromFixture("rug_claimed");
     expect(e).toMatchObject({ kind: "rug_claimed", rugId: 3n, investor: ACCOUNTS.investor, store: ACCOUNTS.store2, interest: 75_000_000n });
-    expect(text(e)).toBe("Deniz the investor took rug No. 0003 and 7.50 USDC interest after Bazaar Corner Rugs missed the buy-out.");
+    expect(text(e)).toBe("Deniz the investor took rug No. 0003 after Bazaar Corner Rugs missed the buy-out. Deniz the investor has a settled payout of 7.50 USDC.");
   });
 });
 

@@ -113,6 +113,8 @@ pub enum DataKey {
     Rug(u64),
     Loan(u64),
     Credit(Address),
+    StoreCount,
+    StoreIndex(u32),
 }
 
 #[contracterror]
@@ -491,6 +493,14 @@ impl RugDealer {
             panic_with_error!(&env, Error::InvalidConfig);
         }
 
+        if (max_months as u64)
+            .checked_mul(month_seconds)
+            .and_then(|duration| duration.checked_add(buyout_window_seconds))
+            .is_none()
+        {
+            panic_with_error!(&env, Error::InvalidConfig);
+        }
+
         let max_fee_bps = (interest_bps_per_year as u64 * max_months as u64) / 12
             + platform_fee_bps as u64
             + (store_fee_bps_per_month as u64 * max_months as u64);
@@ -537,6 +547,14 @@ impl RugDealer {
             open_principal: 0,
             frozen: false,
         };
+        let count = Self::store_count(env.clone());
+        let next = count.checked_add(1).ok_or(Error::InvalidState)?;
+        let index_key = DataKey::StoreIndex(count);
+        env.storage().persistent().set(&index_key, &store);
+        env.storage()
+            .persistent()
+            .extend_ttl(&index_key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        env.storage().instance().set(&DataKey::StoreCount, &next);
         save_store(&env, &value);
         StoreRegistered { store, limit }.publish(&env);
         Ok(())
@@ -742,6 +760,10 @@ impl RugDealer {
             .checked_mul(cfg.month_seconds)
             .ok_or(Error::InvalidAmount)?;
         let end_at = now.checked_add(duration).ok_or(Error::InvalidAmount)?;
+        // Establish a usable default path before locking the rug or taking funds.
+        end_at
+            .checked_add(cfg.buyout_window_seconds)
+            .ok_or(Error::InvalidAmount)?;
 
         loan.investor = Some(investor.clone());
         loan.funded_at = Some(now);
@@ -984,6 +1006,29 @@ impl RugDealer {
 
     pub fn get_store(env: Env, store: Address) -> Result<Store, Error> {
         get_store(&env, &store)
+    }
+
+    /// Durable discovery: zero-based, one address per persistent entry.
+    pub fn store_count(env: Env) -> u32 {
+        bump_instance(&env);
+        env.storage()
+            .instance()
+            .get(&DataKey::StoreCount)
+            .unwrap_or(0)
+    }
+
+    pub fn store_at(env: Env, index: u32) -> Result<Address, Error> {
+        bump_instance(&env);
+        let key = DataKey::StoreIndex(index);
+        let address = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .ok_or(Error::StoreNotRegistered)?;
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        Ok(address)
     }
 
     pub fn get_rug(env: Env, rug_id: u64) -> Result<Rug, Error> {

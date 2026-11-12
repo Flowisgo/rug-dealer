@@ -1,3 +1,4 @@
+import { StrKey, type xdr } from "@stellar/stellar-sdk";
 import { CONTRACT_ID, USDC_ID } from "./deployment";
 
 /** Contract error codes 1–25 (docs/contract-interface.md) in plain words. */
@@ -66,25 +67,30 @@ export function attributedErrors(raw: string): { contract: string; code: number 
   });
 }
 
-/** Words that point at the USDC token rather than RugDealer. */
-const TOKEN_HINT = /balance|insufficient|trustline|trust line|authori[sz]ed|allowance/i;
-
 /** Turn a simulation or transaction error string into a plain message. */
-export function explainError(raw: string): AppError {
+export function explainError(raw: string, events: xdr.DiagnosticEvent[] = [], directContract?: string): AppError {
+  // RPC returns diagnostics separately from the headline HostError. Preserve
+  // the failing token's origin instead of interpreting its code as ours.
+  for (const diagnostic of events) {
+    const event = diagnostic.event;
+    if (!event.contractId) continue;
+    for (const topic of event.body.value.topics) {
+      if (topic.type === "scvError" && topic.value.type === "sceContract")
+        raw += `\ncontract:${StrKey.encodeContract(event.contractId.toXdrObject())}, topics:[error, Error(Contract, #${topic.value.value})]`;
+    }
+  }
   const hits = attributedErrors(raw);
   const usdc = hits.find((h) => h.contract === USDC_ID);
   if (usdc && USDC_ERRORS[usdc.code]) return new AppError(USDC_ERRORS[usdc.code], usdc.code, "usdc");
   const ours = hits.find((h) => h.contract === CONTRACT_ID);
   if (ours && CONTRACT_ERRORS[ours.code]) return new AppError(CONTRACT_ERRORS[ours.code].message, ours.code, "rugdealer");
-  // An error code with no contract named next to it. A failing token call
-  // inside our contract surfaces with the token's code, so only read it as
-  // ours when nothing points at the token.
-  const bare = CODE.exec(raw);
-  if (bare) {
+  // Only a known direct call can attribute a bare code. Write calls can
+  // propagate errors from nested contracts, so never assume they are ours.
+  const bare = /Error\(Contract,\s*#(\d+)\)/.exec(raw);
+  if (!hits.length && bare && directContract) {
     const code = Number(bare[1]);
-    const tokenish = raw.includes(USDC_ID) || TOKEN_HINT.test(raw);
-    if (tokenish && USDC_ERRORS[code]) return new AppError(USDC_ERRORS[code], code, "usdc");
-    if (!tokenish && !hits.length && CONTRACT_ERRORS[code]) return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
+    if (directContract === USDC_ID && USDC_ERRORS[code]) return new AppError(USDC_ERRORS[code], code, "usdc");
+    if (directContract === CONTRACT_ID && CONTRACT_ERRORS[code]) return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
   }
   if (/Error\(Auth,/.test(raw))
     return new AppError("This needs a signature from a different account. Switch accounts in Varial.", undefined, "auth");
@@ -96,7 +102,7 @@ export function explainError(raw: string): AppError {
 export function messageOf(e: unknown): string {
   if (e instanceof AppError) return e.message;
   if (e instanceof Error) {
-    if (/Failed to fetch|NetworkError|ECONN|timeout/i.test(e.message))
+    if (/Failed to fetch|fetch failed|NetworkError|ECONN|ENOTFOUND|ETIMEDOUT|timeout|RPC.*unavailable|status code 5\d\d/i.test(e.message))
       return "Couldn't reach the Stellar testnet. Check your connection and refresh.";
     return e.message;
   }

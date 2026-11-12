@@ -81,6 +81,7 @@ export function Party({ address, link = false, store = false }: { address: strin
 
 export function Countdown({ to, done }: { to: bigint; done?: ReactNode }) {
   const now = useNow();
+  if (now === null) return <span>Checking ledger time…</span>;
   const left = to - now;
   if (left <= 0n) return <>{done ?? "now"}</>;
   return <span className="mono">{clock(left)}</span>;
@@ -157,6 +158,7 @@ export function RugCard({
 /** Who must sign, and a hint when the connected wallet is someone else. */
 export function useSignerCheck(signer: string | null) {
   const w = useWallet();
+  if (w.readOnly) return { ok: false, hint: <>Leave preview to sign with your wallet.</> };
   if (!signer) return { ok: false, hint: null as ReactNode };
   if (!w.address) return { ok: false, hint: <>Connect Varial as <Party address={signer} /> to do this.</> };
   if (w.address !== signer)

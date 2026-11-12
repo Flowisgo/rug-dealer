@@ -1,4 +1,5 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { usdcBalance, type BalanceState } from "@/lib/contract";
 import { DEMO_NAMES, FRIENDBOT_URL } from "@/lib/deployment";
@@ -9,9 +10,11 @@ import { MoneyBlock } from "./money";
 
 type Wallet = {
   address: string | null;
+  readOnly: boolean;
   installed: boolean | null;
   testnet: boolean | null;
   balance: BalanceState; // undefined = loading, null = can't hold USDC, "unavailable" = couldn't read
+  balanceError: string | null;
   connecting: boolean;
   error: string | null;
   connect: () => Promise<void>;
@@ -23,17 +26,21 @@ const Ctx = createContext<Wallet | null>(null);
 const FORGET_KEY = "rugdealer:forget-wallet";
 
 export function WalletProvider({ children }: { children: ReactNode }) {
+  const params = useSearchParams();
+  const readOnly = params?.has("as") ?? false;
   const [address, setAddress] = useState<string | null>(null);
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [testnet, setTestnet] = useState<boolean | null>(null);
   const [balance, setBalance] = useState<BalanceState>(undefined);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const readBalance = useCallback((a: string | null) => {
+    setBalanceError(null);
     if (!a) return setBalance(undefined);
     setBalance(undefined);
-    usdcBalance(a).then(setBalance, () => setBalance("unavailable"));
+    usdcBalance(a).then(setBalance, (e) => { setBalance("unavailable"); setBalanceError(messageOf(e)); });
   }, []);
 
   // Restore a previous connection and follow account switches in Varial.
@@ -92,9 +99,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider
       value={{
         address,
+        readOnly,
         installed,
         testnet,
         balance,
+        balanceError,
         connecting,
         error,
         connect: doConnect,
@@ -156,7 +165,7 @@ export function WalletChip() {
         <span className="bal">
           {w.testnet === false ? (
             <span className="error-text">Not on Testnet</span>
-          ) : w.balance === undefined ? (
+          ) : w.balanceError ? (<span className="error-text">Balance unavailable</span>) : w.balance === undefined ? (
             <span className="muted">…</span>
           ) : w.balance === null ? (
             <span className="muted">No USDC yet</span>
@@ -175,11 +184,12 @@ export function WalletChip() {
         {w.testnet === false && (
           <p className="error-text">Varial is on another network. Switch it to Testnet; this demo never uses real money.</p>
         )}
+        {w.balanceError && <p className="error-text">{w.balanceError} Use Refresh balance to retry.</p>}
         {w.balance === null && (
           <>
             <p>This wallet can't hold test USDC yet. Add USDC first (needs a little test XLM for the fee).</p>
             <div className="btn-row">
-              <button className="btn" onClick={() => void addUsdc()} disabled={!!busy}>
+              <button className="btn" onClick={() => void addUsdc()} disabled={!!busy || w.readOnly}>
                 {busy ? "Working…" : "Add USDC to wallet"}
               </button>
               <a className="small" href={`${FRIENDBOT_URL}/?addr=${w.address}`} target="_blank" rel="noreferrer">

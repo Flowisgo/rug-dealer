@@ -15,7 +15,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { CONTRACT_ID, NETWORK_PASSPHRASE } from "./deployment";
 import { AppError, explainError } from "./errors";
-import { addr, server, u64, type Rug } from "./contract";
+import { addr, getRug, server, u64, type Rug } from "./contract";
 import { invoke, type TxResult, type TxStep } from "./tx";
 import { assertSigner, signAuth } from "./wallet";
 
@@ -160,7 +160,7 @@ export async function signHandover(holder: string, rugId: bigint, store: string)
     .setTimeout(60)
     .build();
   const sim = await server().simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error);
+  if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error, sim.events, CONTRACT_ID);
   if (!rpc.Api.isSimulationSuccess(sim) || !sim.result) throw explainError("");
   const until = (await latestLedger()) + VALID_LEDGERS;
   const auth: string[] = [];
@@ -186,7 +186,7 @@ export async function signHandover(holder: string, rugId: bigint, store: string)
 /** Store side: co-sign and submit a holder's hand-over. */
 export async function submitHandover(h: Handover, onStep?: (s: TxStep) => void): Promise<TxResult> {
   if (isExpired(h, await latestLedger())) throw new AppError("This hand-over code has expired. Ask the holder to sign again.");
-  return invoke(
+  const result = await invoke(
     {
       source: h.store,
       method: "redeem",
@@ -196,6 +196,13 @@ export async function submitHandover(h: Handover, onStep?: (s: TxStep) => void):
     },
     onStep,
   );
+  // A confirmed envelope alone is not a physical release instruction.
+  const rug = await getRug(BigInt(h.rug)).catch(() => {
+    throw new AppError(`Transaction ${result.hash} confirmed, but the certificate could not be read. Keep the rug and refresh its history.`);
+  });
+  if (rug.status !== "Redeemed" || rug.owner !== h.holder || rug.store !== h.store)
+    throw new AppError("The confirmed certificate doesn't match this hand-over. Keep the rug and check its history.");
+  return result;
 }
 
 /** The store holds the rug itself (after a buy-out): one signature. */
