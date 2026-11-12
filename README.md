@@ -1,53 +1,186 @@
-# Rug Dealer
+# RugDealer
 
-A planned Stellar hackathon platform that helps weavers borrow against finished rugs while they look for a better buyer.
+Weavers can borrow against a finished rug instead of selling it cheaply. This is a working prototype on Stellar Testnet: a Soroban contract and a web app with one desk for each role.
 
-## Overview and problem
+**Live app:** _added after the Vercel deployment_
+**Contract on Stellar Testnet:** [`CB54ULGY…QFWG`](https://stellar.expert/explorer/testnet/contract/CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG)
 
-Weavers in Iran may need cash as soon as a rug is finished. Finding a buyer can take months, so they may accept a lower price from a middleman.
+![The RugDealer landing page with the worked example](frontend/screenshots/landing-1280.jpg)
 
-Our platform would let **weavers borrow from investors against finished rugs they own**, giving them time to find a better buyer. This fits the challenge’s **Problem Space 1: Access to Fair Financial Assets and Affordable Financing**.
+This project addresses the challenge's **Problem Space 1: Access to Fair Financial Assets and Affordable Financing**.
 
-**Status:** This repository currently contains project documentation and agent skills. The features and prototype below are planned; the app and contracts are not yet implemented.
+## The problem
+
+A weaver often needs cash the day a rug comes off the loom. A real buyer may pay well for it, but finding that buyer takes months. Meanwhile the local rug store will buy it today for about 40% of that price. Weavers who need the money take the low offer, and the store keeps the profit.
 
 ## How it works
 
-1. A trusted warehouse partner verifies and holds the weaver’s rug, then registers a digital receipt on Stellar.
-2. An investor funds a short-term loan against that rug.
-3. When the weaver finds a buyer, the buyer pays through the Soroban contract.
-4. The contract repays the lender and sends the surplus to the weaver.
-5. After settlement, the warehouse releases the rug to the buyer.
+1. **The store prices the rug.** The weaver leaves a finished rug at a rug store. The store offers its normal buying price. If the weaver accepts, the store issues a rug certificate at that price and keeps the rug safe.
+2. **An investor lends that price.** The weaver asks to borrow exactly the certificate's price for 1 to 12 months. An investor funds the whole loan in USDC. Interest and fees come off the top, once, and the weaver receives the rest straight away.
+3. **Repay, or the store buys the rug.**
+   - **Weaver repays.** The weaver pays back the loan amount, collects the rug and can sell it to a real buyer whenever one turns up.
+   - **Weaver doesn't repay.** The store must buy the rug at the same price within 7 days of the end date, and the investor is paid from that.
+   - **Weaver repays late.** Until the store's payment lands, the weaver can still repay.
 
-The weaver could also repay the loan separately and reclaim the rug.
+Either way, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store.
 
-## What happens at default
+### Worked example
 
-We’re exploring a partnership with a Canadian rug importer who would agree upfront on a fallback purchase price for each rug. If a loan comes due unpaid, the dealer could buy the rug at that price and add it to an existing shipment. The sale proceeds would go toward repaying the lender.
+A real buyer would pay about $1,500 for the rug. The store's buying price is $600, and the weaver borrows it for 6 months.
 
-This is a **proposed arrangement**, not a confirmed partnership or a guarantee of full repayment. The planned demo would simulate the dealer’s purchase and physical shipment.
+| | Amount |
+|---|---:|
+| Investor lends | $600 |
+| Interest held for the investor (15% a year, 6 months) | $45 |
+| Platform fee (1%, once) | $6 |
+| Store fee for holding the rug (0.25% a month) | $9 |
+| **Weaver receives up front** | **$540** |
+
+| How it ends | Weaver | Store | Investor |
+|---|---|---|---|
+| Weaver repays | Pays $600, gets the rug back. Total cost $60 | Earned $9 | Gets $645 |
+| Weaver doesn't repay | Owes nothing more and keeps the $540 | Pays $600 and owns the rug | Gets $645 |
+| Store also misses its 7-day buy-out | Owes nothing more | Frozen: can't issue new certificates | Takes the rug and the $45 interest |
+
+## Who holds what
+
+| Who | What they do | What they hold |
+|---|---|---|
+| Weaver | Leaves the rug, borrows its price, repays to get it back | The rug certificate, when no loan is open |
+| Rug store | Prices the rug, issues the certificate, stores the rug, buys it if the loan isn't repaid | The physical rug |
+| Investor | Funds one whole loan | Nothing during the loan |
+| Soroban contract | Locks the certificate, pays out the loan, holds the interest, collects the repayment or buy-out, pays the investor | The locked certificate and the interest |
+| Platform | Approves stores, sets each store's limit, freezes stores that break the rules, takes the 1% fee | Nothing. It can't move money or certificates |
+| Converter (mocked) | A Stellar anchor that would swap USDC and local currency | Nothing |
 
 ## What runs on Stellar
 
-The planned Soroban contract would:
+- **One Soroban contract** ([`contracts/rugdealer`](contracts/rugdealer)) does the following:
+  - records stores, rug certificates and loans
+  - moves test USDC
+  - enforces the settlement windows: store buy-out on `[end, end + 7 days)`, investor claim from `end + 7 days`
+  - emits an event for every action
+- **Rug certificates** are records inside the contract, each with an id, store, description, price, owner and status. There is no separate Stellar asset or trustline per rug.
+- **USDC** is a test asset with its own Stellar Asset Contract. The weaver's local currency is mocked at a fixed demo rate of 1 USDC ≈ 45 TRY.
+- **The web app** ([`frontend/`](frontend)) does the following:
+  - signs with Freighter
+  - simulates every transaction before sending it, so archived contract data is restored automatically
+  - builds the activity feed from contract events
 
-- Record the digital receipt and track the loan.
-- Handle payments and split payouts between the lender and weaver.
-- Record when the rug is cleared for release.
+The full API is in [`docs/contract-interface.md`](docs/contract-interface.md), and the rules are in [`docs/mechanism-guide.md`](docs/mechanism-guide.md).
 
-The warehouse and dealer would handle appraisal, physical custody, handoff, and shipping. A contract release record would tell the warehouse that settlement is complete; the physical release would remain the warehouse’s responsibility.
+## Try it
 
-## Prototype and tech stack
+The app has five pages: **Store**, **Weaver**, **Investor**, **Platform** and **Activity**.
 
-The planned stack is:
+**Without a wallet.** Open any desk and choose **Look around as …** to see that demo account's screen read-only. The Activity page shows everything that has happened on the contract in plain sentences.
 
-- **Next.js and Vercel:** web app and hosting.
-- **Supabase:** accounts and rug photos.
-- **Freighter and the Stellar SDK:** wallet signing and transactions.
-- **Soroban on Stellar testnet with test USDC:** loan and settlement contracts.
+**With a wallet.**
 
-The prototype would demonstrate two paths:
+1. Install [Freighter](https://www.freighter.app/) in Chrome and switch it to **Testnet**.
+2. Import a demo account, or create a new one and fund it with test XLM from [Friendbot](https://friendbot.stellar.org).
+3. A new account also needs test USDC. Press **Add USDC to wallet** on the wallet chip to add the trustline. The test USDC issuer then has to send you some, because the app can't mint it.
+4. Then follow one rug from start to finish:
 
-1. **Normal sale:** warehouse receipt → investor funds loan → buyer pays → lender and weaver receive payouts → rug cleared for release.
-2. **Fallback purchase after default:** unpaid loan reaches its due date → simulated dealer purchase at the agreed price → proceeds go toward lender repayment → rug cleared for dealer collection.
+| Step | Desk and account | Button |
+|---|---|---|
+| 1 | Store (Kaya Rug House) | **Issue rug certificate** for Ayşe the weaver |
+| 2 | Weaver (Ayşe the weaver) | Pick a length → **Ask for 600.00 USDC** |
+| 3 | Investor (Deniz the investor) | **Lend 600.00 USDC** |
+| 4a | Weaver | **Repay 600.00 USDC**, then **Collect the rug** and send the link to the store |
+| 4b | Store, once the loan is overdue | **Buy the rug for 600.00 USDC** |
+| 4c | Investor, once the store's window has closed | **Take the rug** |
+| 5 | Store | Open the weaver's link → **Sign and hand over** |
 
-The prototype would use **simulated funds**, with test USDC on Stellar testnet. A live pilot would require confirmed warehouse and dealer partners and a lawful payment route.
+In this demo deployment, **1 loan month is 60 seconds** and the store's buy-out window is also 60 seconds. A whole loan therefore plays out in a few minutes.
+
+## Testnet deployment
+
+| Item | Value |
+|---|---|
+| Network | Stellar Testnet |
+| RugDealer contract | `CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG` |
+| Test USDC (contract) | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
+| Test USDC (asset) | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
+
+Deployment parameters:
+
+| Parameter | Value |
+|---|---|
+| Interest | 1,500 bps a year |
+| Platform fee | 100 bps, once |
+| Store fee | 25 bps a month |
+| Longest loan | 12 months |
+| Loan month | 60 s |
+| Buy-out window | 60 s |
+| Store limit | 5,000 USDC each |
+
+In a real deployment, a month would be 30 days and the window 7 days. Both are constructor parameters.
+
+Demo accounts (public keys only):
+
+| Name in the app | Role | Public key |
+|---|---|---|
+| RugDealer platform | Platform admin and fee recipient | `GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ` |
+| Kaya Rug House | Store | `GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN` |
+| Bazaar Corner Rugs | Store, frozen after the missed-buy-out demo | `GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ` |
+| Ayşe the weaver | Weaver | `GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF` |
+| Deniz the investor | Investor | `GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W` |
+
+Transaction hashes for the deployment and the three scripted scenarios are in [`docs/testnet-deployment.json`](docs/testnet-deployment.json) and [`docs/testnet-demo-results.json`](docs/testnet-demo-results.json).
+
+## Run it locally
+
+You need Node 20 or later and npm.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The app is all client-side and talks straight to the public testnet RPC, so it needs no environment variables.
+
+```bash
+npm test           # unit tests: money maths, event sentences, loan rules, hand-over codes
+npm run smoke      # read-only checks against the live testnet contract
+npm run typecheck
+npm run build
+```
+
+The contract has its own tests:
+
+```bash
+cargo test
+```
+
+To deploy a fresh contract and run the scripted repay, buy-out and claim scenarios, see [`docs/testnet-demo.md`](docs/testnet-demo.md). This requires Python 3.10+ and the Stellar CLI. Secret keys stay in `~/.rugdealer-demo/config`, outside the repository.
+
+### Deploying the web app
+
+On Vercel, import the repository and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed. After a contract redeploy, update `frontend/lib/deployment.ts` with the new contract id and deploy ledger.
+
+## Repository layout
+
+```text
+contracts/rugdealer/   Soroban contract and its tests (Rust)
+scripts/testnet.py     Testnet deploy and scripted demo scenarios
+docs/                  Mechanism guide, contract interface, deployment records
+frontend/              Next.js web app
+  app/                 Landing, store, weaver, investor, platform, activity, rug timeline
+  lib/                 Contract reads, transactions, wallet, events, money, rules
+  test/, smoke/        Unit tests and live testnet smoke tests
+```
+
+## Limits of the prototype
+
+The prototype leaves out the following:
+
+- a real anchor (conversion to local currency is mocked)
+- identity checks
+- mainnet
+- several investors on one loan
+- trading rug certificates
+- selling rugs through the contract
+
+The partner agreement covers two cases outside the contract: a store that can't produce a rug, and a store that closes. Stellar network fees are paid by each signer, not sponsored by the platform. The testnet RPC keeps about 7 days of events, so older activity drops out of the feed. The contract state itself is kept.
