@@ -8,8 +8,8 @@ import { clock, type Tone } from "@/lib/rules";
 import { STEP_TEXT, type TxResult, type TxStep } from "@/lib/tx";
 import { refreshLedger, useNow } from "@/lib/use-ledger";
 import { short } from "@/lib/wallet";
+import { Kilim } from "./kilim";
 import { MoneyBlock } from "./money";
-import { RugCloth } from "./rug";
 import { useWallet } from "./wallet";
 
 export function Section({ label, count, children, id }: { label: string; count?: number; children: ReactNode; id?: string }) {
@@ -110,15 +110,15 @@ export function LedgerRows({ rows }: { rows: { label: ReactNode; units: bigint; 
   );
 }
 
-/** The dye of a rug card's border comes from its status tag, so the tag stays
- * the one source of truth for how a rug is doing. */
+/** A rug entry's look follows its status tag, so the tag stays the one source
+ * of truth for how a rug is doing. */
 export function toneOf(tag: ReactNode): Tone {
   return isValidElement<{ tone: Tone }>(tag) && tag.type === Tag ? tag.props.tone : "plain";
 }
 
-/** A rug seen from above: a plain field with crisp long sides, woven end
- * bands dyed by status and seeded by the rug number, knotted fringe, and the
- * rug number on a cloth label sewn to the top band. */
+/** A rug entry: the rug itself, woven from its number, with its certificate
+ * as a cotton tag beside it. On wide screens the rug hangs on the wall and
+ * the tag is tied to it; on narrow ones the rug sits inside the tag. */
 export function RugCard({
   id,
   name,
@@ -130,22 +130,26 @@ export function RugCard({
   tag?: ReactNode;
   children?: ReactNode;
 }) {
+  const tone = toneOf(tag);
   return (
-    <article className="rug" data-tone={toneOf(tag)}>
-      <RugCloth
-        seed={Number(id)}
-        head={
-          <div className="rug-head">
-            <Link className="rug-label" href={`/rug/${id}`} title="Open this rug's history">
-              {rugNo(id)}
-            </Link>
+    <article className="entry" data-tone={tone}>
+      <div className="entry-inner">
+        <Link className="entry-rug" href={`/rug/${id}`} aria-label={`Open the history of rug ${rugNo(id)}`}>
+          <Kilim seed={Number(id)} fringe="short" className={tone === "done" ? "kilim-faded" : undefined} />
+        </Link>
+        <div className="entry-tag">
+          <div className="entry-top">
+            <div className="entry-line">
+              <Link className="entry-no" href={`/rug/${id}`}>
+                {rugNo(id)}
+              </Link>
+              {tag}
+            </div>
             <h3 className="rug-name">{name}</h3>
-            {tag && <div className="rug-status">{tag}</div>}
           </div>
-        }
-      >
-        {children}
-      </RugCloth>
+          {children}
+        </div>
+      </div>
     </article>
   );
 }

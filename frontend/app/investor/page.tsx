@@ -1,7 +1,7 @@
 "use client";
 import { HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
-import { MoneyBlock, MoneyInline } from "@/components/money";
+import { MoneyBlock, MoneyInline, MoneySentence } from "@/components/money";
 import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { addr, u64, type Loan, type Rug } from "@/lib/contract";
@@ -45,26 +45,22 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
 
   return (
     <>
-      <div className="stats four" style={{ marginTop: 24 }}>
-        <div>
-          <span className="k">Lent in total</span>
-          <MoneyBlock units={t.lent} />
-        </div>
-        <div>
-          <span className="k">Interest earned</span>
-          <MoneyBlock units={t.earned} />
-        </div>
-        <div>
-          <span className="k">Interest still to come</span>
-          <MoneyBlock units={t.expected} />
-        </div>
-        <div>
-          <span className="k">Loans running</span>
-          <span className="mono" style={{ fontSize: "1.4rem" }}>
-            {t.open}
-          </span>
-        </div>
-      </div>
+      <p className="summary">
+        {t.lent === 0n ? (
+          <>You haven't lent yet. Open requests are below.</>
+        ) : (
+          <>
+            You've lent <MoneySentence units={t.lent} /> and earned <MoneySentence units={t.earned} /> in interest.{" "}
+            {t.open === 0 ? (
+              "No loans of yours are running."
+            ) : (
+              <>
+                <MoneySentence units={t.expected} /> more is due from {t.open === 1 ? "one running loan" : `${t.open} running loans`}.
+              </>
+            )}
+          </>
+        )}
+      </p>
 
       <Section label="Open requests" count={requests.length}>
         {requests.length === 0 ? (

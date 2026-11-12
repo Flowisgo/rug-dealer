@@ -6,6 +6,7 @@ import { ACCOUNTS, contractUrl, txUrl } from "@/lib/deployment";
 import { resumePending, type Pending } from "@/lib/tx";
 import { refreshLedger } from "@/lib/use-ledger";
 import { StrKey } from "@stellar/stellar-sdk";
+import { Kilim } from "./kilim";
 import { Party } from "./ui";
 import { useWallet, WalletChip } from "./wallet";
 
@@ -22,11 +23,11 @@ export function Header() {
   return (
     <>
       <p className="testnet-strip">
-        <strong>Stellar Testnet demo.</strong> 1 month = 1 minute in this demo; local currency is an approximate demo rate.
+        <strong>Stellar Testnet demo.</strong> A loan month lasts one minute here, and lira amounts use an approximate rate.
       </p>
       <header className="site-header">
         <Link href="/" className="wordmark">
-          <span className="wordmark-knot" aria-hidden />
+          <Kilim seed={0} fringe="none" />
           RugDealer
         </Link>
         <nav className="site-nav" aria-label="Main">
@@ -38,7 +39,6 @@ export function Header() {
         </nav>
         <WalletChip />
       </header>
-      <div className="band" aria-hidden />
       <PendingNotice />
     </>
   );

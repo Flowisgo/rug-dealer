@@ -1,19 +1,29 @@
-/* Kilim ledger. Seven colours, three typefaces, 2px corners, no shadows. */
+/* RugDealer: the shop wall.
+   A limewashed wall, cotton tags and indigo ink. The rugs carry all the
+   colour; outside them, madder marks only the one action and overdue loans.
+   One family, Schibsted Grotesk, with tabular figures for every number. */
 :root {
-  --wool: #f4ede2;
-  --paper: #fbf7f0;
-  --walnut: #2b211b;
-  --walnut-soft: #5a4a3f;
-  --madder: #9e2b25;
-  --indigo: #1f2a44;
-  --saffron: #d9a441;
-  --rule: rgba(43, 33, 27, 0.2);
-  --radius: 2px;
-  --display: var(--font-fraunces), Georgia, serif;
-  --ui: var(--font-plex-sans), "Helvetica Neue", Arial, sans-serif;
-  --mono: var(--font-plex-mono), "Courier New", monospace;
+  --wall: #e7e4dc;
+  --cotton: #f7f5f0;
+  --ink: #1c2440;
+  --slate: #5e6475;
+  --action: #9b2a22;
+  --weld: #cf9f2f;
+  --line: rgba(28, 36, 64, 0.14);
+  --line-strong: rgba(28, 36, 64, 0.42);
+
+  /* Dyes, used inside rugs (components/kilim.tsx) and for small status marks. */
+  --wool: #f1e8d5;
+  --madder: #9b2a22;
+  --indigo: #24346b;
+  --walnut: #3a2a20;
+  --saffron: #cf9f2f;
+
+  --font: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+  --r-s: 3px;
+  --r-m: 6px;
   --gutter: 16px;
-  --max: 1080px;
+  --max: 1120px;
 }
 
 *,
@@ -28,25 +38,27 @@ html {
 
 body {
   margin: 0;
-  background: var(--wool);
-  color: var(--walnut);
-  font-family: var(--ui);
+  background: var(--wall);
+  color: var(--ink);
+  font-family: var(--font);
   font-size: 16px;
   line-height: 1.5;
+  font-feature-settings: "kern";
   overflow-x: hidden;
 }
 
 a {
-  color: var(--indigo);
+  color: var(--ink);
+  text-decoration-color: var(--line-strong);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
 a:hover {
-  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
 }
 
 :focus-visible {
-  outline: 2px solid var(--indigo);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -57,34 +69,38 @@ p {
   margin: 0;
 }
 
-.mono,
-code {
-  font-family: var(--mono);
+/* Times line up in lists. Everything else keeps proportional figures, so a
+   decimal point or "No." doesn't open a gap. .mono marks data (addresses,
+   rug numbers); it stays in the same family. */
+time {
   font-variant-numeric: tabular-nums;
+}
+.mono {
+  letter-spacing: 0.01em;
 }
 
 /* ---------- frame ---------- */
 
 .testnet-strip {
-  border-bottom: 1px solid var(--rule);
-  padding: 6px var(--gutter);
-  font-size: 0.8rem;
-  color: var(--walnut-soft);
+  background: var(--ink);
+  color: color-mix(in srgb, var(--cotton) 82%, var(--ink));
+  padding: 7px var(--gutter);
+  font-size: 0.8125rem;
   text-align: center;
 }
 .testnet-strip strong {
-  color: var(--walnut);
+  color: var(--cotton);
   font-weight: 600;
 }
 
 .site-header {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 14px var(--gutter) 12px;
+  padding: 16px var(--gutter) 10px;
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas: "mark wallet" "nav nav";
-  gap: 12px 16px;
+  gap: 14px 16px;
   align-items: center;
 }
 .wordmark {
@@ -92,167 +108,143 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: var(--walnut);
+  color: var(--ink);
   text-decoration: none;
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
 }
-.wordmark-knot {
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--walnut);
-  background:
-    linear-gradient(var(--madder), var(--madder)) center / 6px 6px no-repeat,
-    linear-gradient(var(--wool), var(--wool)) center / 12px 12px no-repeat,
-    var(--indigo);
-  transform: rotate(45deg);
+.wordmark .kilim {
+  width: 15px;
   flex: none;
 }
 .site-nav {
   grid-area: nav;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 18px;
-  font-size: 0.95rem;
+  gap: 2px 16px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+@media (min-width: 420px) {
+  .site-nav {
+    gap: 2px 22px;
+  }
 }
 .site-nav a {
-  color: var(--walnut);
+  color: var(--slate);
   text-decoration: none;
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 2px solid transparent;
 }
 .site-nav a:hover {
-  border-bottom-color: var(--rule);
+  color: var(--ink);
 }
 .site-nav a[aria-current="page"] {
-  border-bottom-color: var(--indigo);
-  color: var(--indigo);
-  font-weight: 600;
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
 @media (min-width: 860px) {
   .site-header {
     grid-template-columns: auto 1fr auto;
     grid-template-areas: "mark nav wallet";
-    padding-top: 18px;
-    padding-bottom: 16px;
+    padding-top: 22px;
+    padding-bottom: 18px;
+    gap: 16px 40px;
   }
-  .site-nav {
-    justify-content: center;
-  }
-}
-
-/* The woven band: two interlaced rows of kilim stripes. */
-.band {
-  height: 10px;
-  background-color: var(--wool);
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      var(--madder) 0 9px,
-      var(--wool) 9px 11px,
-      var(--indigo) 11px 20px,
-      var(--wool) 20px 22px,
-      var(--saffron) 22px 25px,
-      var(--wool) 25px 27px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      var(--indigo) 0 9px,
-      var(--wool) 9px 11px,
-      var(--saffron) 11px 14px,
-      var(--wool) 14px 16px,
-      var(--madder) 16px 25px,
-      var(--wool) 25px 27px
-    );
-  background-size:
-    100% 5px,
-    100% 5px;
-  background-position:
-    0 0,
-    13px 5px;
-  background-repeat: repeat-x;
-  border-top: 1px solid var(--walnut);
-  border-bottom: 1px solid var(--walnut);
-}
-.band.thin {
-  height: 6px;
-  background-size:
-    100% 3px,
-    100% 3px;
-  background-position:
-    0 0,
-    13px 3px;
-  border: 0;
-  margin: 40px 0;
 }
 
 main {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 28px var(--gutter) 64px;
+  padding: 24px var(--gutter) 72px;
 }
 
 .site-footer {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 20px var(--gutter) 40px;
-  border-top: 1px solid var(--rule);
-  font-size: 0.85rem;
-  color: var(--walnut-soft);
+  padding: 22px var(--gutter) 44px;
+  border-top: 1px solid var(--line);
+  font-size: 0.875rem;
+  color: var(--slate);
   display: flex;
   flex-wrap: wrap;
   gap: 8px 24px;
 }
+.site-footer a {
+  color: var(--slate);
+}
 
-/* ---------- type ---------- */
+/* ---------- type: 1.25 scale ---------- */
 
 .page-title {
-  font-family: var(--display);
-  font-weight: 500;
-  font-size: 2rem;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  font-optical-sizing: auto;
+  font-weight: 800;
+  font-size: 1.953rem;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  max-width: 22ch;
 }
 .page-lede {
-  margin-top: 10px;
-  max-width: 62ch;
-  color: var(--walnut-soft);
-  font-size: 1.05rem;
+  margin-top: 12px;
+  max-width: 58ch;
+  color: var(--slate);
+  font-size: 1.0625rem;
+  line-height: 1.55;
 }
 @media (min-width: 720px) {
   .page-title {
-    font-size: 2.6rem;
+    font-size: 2.441rem;
   }
 }
 
 .section {
-  margin-top: 40px;
+  margin-top: 48px;
 }
 .section-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--walnut-soft);
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--walnut);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   margin-bottom: 16px;
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   align-items: baseline;
 }
 .section-label .count {
-  font-family: var(--mono);
-  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
 }
 .muted {
-  color: var(--walnut-soft);
+  color: var(--slate);
 }
 .small {
   font-size: 0.875rem;
+}
+
+/* ---------- desk summary: one sentence about where you stand ---------- */
+
+.summary {
+  margin-top: 28px;
+  max-width: 46ch;
+  font-size: 1.25rem;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+}
+.summary strong {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.summary .local {
+  color: var(--slate);
+  font-size: 0.8em;
+  font-weight: 400;
+  white-space: nowrap;
+}
+@media (min-width: 720px) {
+  .summary {
+    font-size: 1.5rem;
+  }
 }
 
 /* ---------- money ---------- */
@@ -263,29 +255,32 @@ main {
   line-height: 1.25;
 }
 .money .usdc {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 .money .local {
-  font-family: var(--mono);
-  font-size: 0.78em;
-  color: var(--walnut-soft);
+  font-size: 0.8125em;
+  color: var(--slate);
   white-space: nowrap;
 }
 .money.big .usdc {
-  font-size: 1.6rem;
-  font-weight: 500;
+  font-size: 1.563rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
+/* The USDC amount and the lira estimate each stay whole; the line may break
+   between them. */
 .money-inline {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.money-inline .usdc,
+.money-inline .local {
   white-space: nowrap;
 }
 .money-inline .local {
-  color: var(--walnut-soft);
+  color: var(--slate);
   font-size: 0.85em;
+  font-weight: 400;
 }
 
 /* ---------- controls ---------- */
@@ -296,63 +291,64 @@ main {
   justify-content: center;
   gap: 8px;
   min-height: 44px;
-  padding: 10px 16px;
-  font: 600 0.95rem/1.2 var(--ui);
-  color: var(--walnut);
+  padding: 10px 18px;
+  font: 600 0.95rem/1.2 var(--font);
+  color: var(--ink);
   background: transparent;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-s);
   cursor: pointer;
   text-decoration: none;
   text-align: center;
 }
 .btn:hover:not(:disabled) {
-  background: var(--paper);
+  background: var(--cotton);
 }
 .btn-primary {
-  background: var(--madder);
-  border-color: var(--madder);
-  color: var(--paper);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--cotton);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--walnut);
-  border-color: var(--walnut);
+  background: color-mix(in srgb, var(--action) 80%, var(--ink));
+  border-color: color-mix(in srgb, var(--action) 80%, var(--ink));
 }
 .btn-quiet {
   border-color: transparent;
-  color: var(--indigo);
   padding-left: 0;
   padding-right: 0;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 4px;
 }
 .btn-quiet:hover:not(:disabled) {
   background: transparent;
-  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
 }
 .btn:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 .btn-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 10px 14px;
   align-items: center;
 }
 
 .field {
   display: grid;
   gap: 6px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 .field > span {
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 .field .hint {
-  font-size: 0.8rem;
-  color: var(--walnut-soft);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--slate);
 }
 .input,
 select.input,
@@ -360,21 +356,23 @@ textarea.input {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  font: 400 1rem var(--ui);
-  color: var(--walnut);
-  background: var(--paper);
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
+  font: 400 1rem var(--font);
+  color: var(--ink);
+  background: var(--cotton);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-s);
 }
-.input.mono {
-  font-family: var(--mono);
+.input:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 0;
+  border-color: var(--ink);
 }
 textarea.input {
-  min-height: 84px;
+  min-height: 88px;
   resize: vertical;
 }
 .input[aria-invalid="true"] {
-  border-color: var(--madder);
+  border-color: var(--action);
 }
 
 .choices {
@@ -394,19 +392,21 @@ textarea.input {
 }
 .choice span {
   display: inline-block;
-  padding: 8px 12px;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  background: var(--paper);
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-s);
+  background: var(--cotton);
   font-size: 0.9rem;
+  font-weight: 500;
 }
 .choice input:checked + span {
-  background: var(--indigo);
-  border-color: var(--indigo);
-  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--cotton);
 }
 .choice input:focus-visible + span {
-  outline: 2px solid var(--indigo);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -418,8 +418,8 @@ textarea.input {
 .months .choice span {
   display: block;
   text-align: center;
-  font-family: var(--mono);
-  padding: 8px 0;
+  font-variant-numeric: tabular-nums;
+  padding: 9px 0;
 }
 @media (min-width: 720px) {
   .months {
@@ -427,244 +427,257 @@ textarea.input {
   }
 }
 
-/* ---------- tags ---------- */
+/* ---------- status marks: a small woven square and plain words ---------- */
 
 .tag {
-  display: inline-block;
-  font: 600 0.68rem/1.2 var(--ui);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 4px 6px;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 0.8125rem/1.3 var(--font);
+  color: var(--ink);
 }
-.tag.waiting {
-  background: var(--saffron);
-  border-color: var(--saffron);
+.tag::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
 }
-.tag.secured {
+.tag.waiting::before {
+  background: var(--weld);
+  border-color: var(--weld);
+}
+.tag.secured::before {
   background: var(--indigo);
   border-color: var(--indigo);
-  color: var(--paper);
 }
 .tag.late {
-  background: var(--madder);
-  border-color: var(--madder);
-  color: var(--paper);
+  color: var(--action);
+}
+.tag.late::before {
+  background: var(--action);
+  border-color: var(--action);
 }
 .tag.done {
-  border-color: var(--rule);
-  color: var(--walnut-soft);
+  color: var(--slate);
+}
+.tag.done::before {
+  border-color: var(--line-strong);
 }
 
-/* ---------- rug cards ---------- */
+/* ---------- rugs (components/kilim.tsx) ---------- */
 
-/* A flat-woven rug seen from above. Long sides are a crisp edge: 1px walnut
-   with 2px of dye inside. The short ends (top and bottom, at every width)
-   carry an end band of filled motifs and knotted fringe, drawn by
-   components/rug.tsx and seeded by the rug number. The dye follows the
-   status tag (data-tone); the field stays paper. Layout of the head follows
-   the card's own width. */
+.kilim {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.kilim-weft-dark {
+  fill: var(--walnut);
+  opacity: 0.1;
+}
+.kilim-weft-light {
+  fill: var(--wool);
+  opacity: 0.14;
+}
+/* Fringe: undyed warp, fine, with a faint darker underside so it reads on
+   the light wall. */
+.kilim-fringe .under {
+  fill: none;
+  stroke: color-mix(in srgb, var(--walnut) 34%, transparent);
+  stroke-linecap: round;
+}
+.kilim-fringe .warp {
+  fill: none;
+  stroke: var(--wool);
+  stroke-linecap: round;
+}
+.kilim-fringe .knot {
+  fill: var(--wool);
+  stroke: color-mix(in srgb, var(--walnut) 34%, transparent);
+  stroke-width: 0.35;
+}
+/* Collected: the rug has left the store; its picture steps back. */
+.kilim-faded {
+  opacity: 0.4;
+}
+
+/* The loom: a rug weaving itself, row by row from the bottom, on first load.
+   An empty warp sits under a cover that lifts in 42 steps, one per weft row. */
+.loom-cover {
+  fill: var(--wall);
+}
+.loom-warp {
+  stroke: color-mix(in srgb, var(--walnut) 22%, var(--wall));
+  stroke-width: 0.35;
+}
+.loom-shed {
+  transform-box: fill-box;
+  transform-origin: top;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .loom-shed {
+    animation: weave 2.4s steps(42, end) 0.3s both;
+  }
+  @keyframes weave {
+    from {
+      transform: scaleY(1);
+    }
+    to {
+      transform: scaleY(0);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loom-shed {
+    display: none;
+  }
+}
+
+/* ---------- a rug entry: the rug hangs on the wall, its tag tied beside it ---------- */
 
 .card-list {
   display: grid;
   gap: 16px;
 }
-.card-list:has(> .rug) {
-  gap: 24px;
+.card-list:has(> .entry) {
+  gap: 20px;
 }
 
-.rug {
-  --dye: var(--walnut-soft);
-  container: rug / inline-size;
+.entry {
+  container: entry / inline-size;
   min-width: 0;
 }
-.rug[data-tone="secured"] {
-  --dye: var(--indigo);
-}
-.rug[data-tone="late"] {
-  --dye: var(--madder);
-}
-/* Collected or settled: walnut-soft let down with wool. */
-.rug[data-tone="done"] {
-  --dye: color-mix(in srgb, var(--walnut-soft) 45%, var(--wool));
-}
-
-/* Fringe: soft fibres in bundles, knot against the rug. Cells of four bundles
-   fill the width whole (auto-fill); extra cells wrap out of sight. */
-.rug-fringe {
+/* Phone and narrow columns: one cotton tag with the rug inside, top left. */
+.entry-inner {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  grid-auto-rows: 22px;
-  height: 22px;
-  margin: 0 4px;
-  overflow: hidden;
-}
-.rug-fringe-top {
-  transform: scaleY(-1);
-}
-.rug-fringe svg {
-  display: block;
-  overflow: visible;
-}
-.rug-fringe path {
-  fill: none;
-  stroke: color-mix(in srgb, var(--walnut-soft) 78%, var(--wool));
-  stroke-width: 1.15;
-  stroke-linecap: round;
-}
-.rug-fringe ellipse {
-  fill: color-mix(in srgb, var(--walnut-soft) 90%, var(--wool));
-}
-.rug[data-tone="done"] .rug-fringe {
-  opacity: 0.6;
-}
-
-.rug-cloth {
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-/* End band: abrash guard stripes around a row of motifs on wool. As many
-   whole motifs as fit, about one per 112px, evenly spaced. */
-.rug-band {
-  position: relative;
-  display: grid;
-  grid-template-rows: 2px 22px 2px;
-  height: 26px;
-  background: var(--wool);
-}
-.rug-motifs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  grid-auto-rows: 22px;
-  place-items: center;
-  overflow: hidden;
-}
-.rug-motif svg {
-  display: block;
-}
-/* Weft: faint horizontal threads over the whole band, a darker and a lighter
-   pass every 3px, so the band reads as woven without showing stripes. */
-.rug-band::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--walnut) 7%, transparent) 0 1px,
-    transparent 1px 2px,
-    color-mix(in srgb, var(--wool) 18%, transparent) 2px 3px
-  );
-}
-.rug-field {
-  background: var(--paper);
-  border-left: 2px solid var(--dye);
-  border-right: 2px solid var(--dye);
-  padding: 0 16px 18px;
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-.rug-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "label status"
-    "name name";
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 14px 16px;
   align-items: start;
-  gap: 12px 14px;
+  background: var(--cotton);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  padding: 16px;
 }
-
-/* The rug number on a cloth label, sewn to the inner guard of the top band. */
-.rug-label {
-  grid-area: label;
-  display: inline-flex;
+.entry-rug {
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  padding: 6px 0;
+}
+.entry-rug:focus-visible {
+  outline-offset: 4px;
+}
+.entry-tag {
+  display: contents;
+}
+.entry-top {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+.entry-tag > :not(.entry-top) {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.entry-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   align-items: center;
-  min-height: 44px;
-  padding: 2px 12px 0;
-  font: 500 1rem var(--mono);
-  letter-spacing: 0.02em;
-  color: var(--walnut);
-  text-decoration: none;
-  white-space: nowrap;
-  background-color: var(--wool);
-  /* Stitches along the sewn top edge and the free bottom edge. */
-  background-image:
-    repeating-linear-gradient(90deg, var(--walnut-soft) 0 3px, transparent 3px 6px),
-    repeating-linear-gradient(90deg, var(--walnut-soft) 0 3px, transparent 3px 6px);
-  background-size:
-    calc(100% - 10px) 1px,
-    calc(100% - 10px) 1px;
-  background-position:
-    5px 3px,
-    5px calc(100% - 4px);
-  background-repeat: no-repeat;
-  border: 1px solid var(--walnut);
-  border-top: 0;
-  border-radius: 0 0 var(--radius) var(--radius);
 }
-a.rug-label:hover {
+.entry-no {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--slate);
+  text-decoration: none;
+}
+a.entry-no:hover {
+  color: var(--ink);
   text-decoration: underline;
 }
-
-.rug-status {
-  grid-area: status;
-  justify-self: end;
-  align-self: center;
-  margin-top: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
-/* Long status labels wrap instead of running past the field. */
-.rug-status .tag {
-  white-space: normal;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
 .rug-name {
-  grid-area: name;
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: 1.3rem;
-  line-height: 1.25;
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
-  min-width: 0;
+}
+.entry .tag {
+  max-width: 100%;
+}
+.entry[data-tone="late"] .entry-inner {
+  border-color: color-mix(in srgb, var(--action) 55%, transparent);
 }
 
-@container rug (min-width: 600px) {
-  .rug-field {
-    padding: 0 22px 20px;
+/* Wide: the rug hangs on the wall; the tag is tied to it with a short string. */
+@container entry (min-width: 620px) {
+  .entry-inner {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 0 36px;
+    background: none;
+    border: 0;
+    padding: 0;
   }
-  .rug-head {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "label name status";
-    gap: 12px 18px;
+  .entry-rug {
+    padding: 2px 0 0;
   }
-  .rug-label {
-    font-size: 1.1rem;
+  .entry-tag {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    display: grid;
+    gap: 14px;
+    align-content: start;
+    min-width: 0;
+    background: var(--cotton);
+    border: 1px solid var(--line);
+    border-radius: var(--r-m);
+    padding: 18px 22px 20px 38px;
+  }
+  .entry[data-tone="late"] .entry-tag {
+    border-color: color-mix(in srgb, var(--action) 55%, transparent);
+  }
+  .entry-top,
+  .entry-tag > :not(.entry-top) {
+    grid-column: auto;
+    grid-row: auto;
   }
   .rug-name {
-    align-self: center;
-    margin-top: 4px;
+    font-size: 1.25rem;
   }
-  .rug-status {
-    align-self: start;
-    max-width: 220px;
-    margin-top: 10px;
+  /* The punched hole, and the string that ties the tag to the rug. */
+  .entry-tag::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 24px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--wall);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .entry-tag::after {
+    content: "";
+    position: absolute;
+    top: 28px;
+    right: calc(100% - 18px);
+    width: 52px;
+    height: 1px;
+    background: var(--line-strong);
   }
 }
 
-/* Key/value pairs and their row, shared with the platform's store cards. */
+/* Key/value pairs and their row, shared with the platform's store panels. */
 .card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 28px;
+  gap: 12px 32px;
 }
 .kv {
   display: grid;
@@ -673,8 +686,8 @@ a.rug-label:hover {
 }
 .kv > dt,
 .kv > .k {
-  font-size: 0.78rem;
-  color: var(--walnut-soft);
+  font-size: 0.8125rem;
+  color: var(--slate);
 }
 .kv > dd {
   margin: 0;
@@ -685,38 +698,38 @@ a.rug-label:hover {
 .ledger {
   margin: 0;
   display: grid;
-  border-top: 1px solid var(--rule);
 }
 .ledger-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
 }
 .ledger-row dt {
-  font-size: 0.92rem;
+  font-size: 0.9375rem;
 }
 .ledger-row dd {
   margin: 0;
   text-align: right;
 }
 .ledger-row.total {
-  border-top: 1px solid var(--walnut);
   border-bottom: 0;
-  font-weight: 600;
+  border-top: 1.5px solid var(--ink);
+  margin-top: -1px;
+  font-weight: 700;
 }
 .ledger-row .money {
   align-items: flex-end;
 }
 
-/* ---------- panels, notices ---------- */
+/* ---------- panels and notices ---------- */
 
 .panel {
-  background: var(--paper);
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
+  background: var(--cotton);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
   padding: 18px 16px;
 }
 @media (min-width: 720px) {
@@ -728,83 +741,79 @@ a.rug-label:hover {
   margin-top: 16px;
 }
 .panel-title {
-  font-weight: 600;
-  font-size: 1.05rem;
+  font-weight: 700;
+  font-size: 1.0625rem;
   margin-bottom: 12px;
 }
 
 .notice {
-  border: 1px solid var(--indigo);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  background: var(--paper);
-  padding: 12px 14px;
-  font-size: 0.92rem;
+  border-left: 3px solid var(--ink);
+  background: var(--cotton);
+  border-radius: 0 var(--r-s) var(--r-s) 0;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
 }
 .notice.warn {
-  border-color: var(--madder);
-  color: var(--walnut);
+  border-left-color: var(--action);
 }
 .notice.warn strong {
-  color: var(--madder);
+  color: var(--action);
 }
 .notice + .notice {
   margin-top: 10px;
 }
 /* Neutral note: nothing wrong, nothing to do. */
 .notice.quiet {
-  border-color: var(--rule);
-  border-left-width: 1px;
+  border-left-color: var(--line-strong);
 }
-/* Done: a hand-over went through. Indigo, the colour of settled things. */
+/* Done: a hand-over went through. */
 .handed-over {
-  border: 1px solid var(--indigo);
-  border-left-width: 4px;
-  border-radius: var(--radius);
-  background: var(--paper);
+  border-left: 3px solid var(--indigo);
+  background: var(--cotton);
+  border-radius: 0 var(--r-s) var(--r-s) 0;
   padding: 14px 16px;
   display: grid;
   gap: 6px;
 }
 .handed-over-title {
-  color: var(--indigo);
-  font-weight: 600;
-  font-size: 1.02rem;
+  font-weight: 700;
+  font-size: 1.0625rem;
 }
 .handed-over .btn-row {
   gap: 6px 18px;
 }
 .frozen-banner {
-  background: var(--madder);
-  color: var(--paper);
-  border-radius: var(--radius);
-  padding: 14px 16px;
+  background: var(--action);
+  color: var(--cotton);
+  border-radius: var(--r-m);
+  padding: 16px 18px;
 }
 .frozen-banner strong {
   display: block;
-  font-size: 1.05rem;
+  font-size: 1.125rem;
+  margin-bottom: 2px;
 }
 
 .empty {
-  border: 1px dashed var(--walnut);
-  border-radius: var(--radius);
-  padding: 22px 18px;
-  color: var(--walnut-soft);
-  font-size: 0.95rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-m);
+  padding: 22px 20px;
+  color: var(--slate);
+  font-size: 0.9375rem;
 }
 .empty strong {
-  color: var(--walnut);
+  color: var(--ink);
   display: block;
   margin-bottom: 4px;
 }
 
 .error-text {
-  color: var(--madder);
+  color: var(--action);
   font-size: 0.9rem;
 }
 .step-text {
-  color: var(--indigo);
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 /* ---------- grids ---------- */
@@ -822,53 +831,21 @@ a.rug-label:hover {
     grid-template-columns: 3fr 2fr;
   }
 }
-.stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--walnut);
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-}
-.stats > div {
-  background: var(--paper);
-  padding: 14px 16px;
-  display: grid;
-  gap: 4px;
-  align-content: start;
-}
-@media (max-width: 719px) {
-  .stats > div:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-}
-.stats .k {
-  font-size: 0.8rem;
-  color: var(--walnut-soft);
-}
-@media (min-width: 720px) {
-  .stats.four {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .stats.three {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
 .meter {
-  height: 10px;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  background: var(--paper);
+  height: 8px;
+  background: color-mix(in srgb, var(--ink) 10%, var(--wall));
+  border-radius: 4px;
   overflow: hidden;
+  max-width: 46ch;
 }
 .meter > span {
   display: block;
   height: 100%;
-  background: var(--indigo);
+  background: var(--ink);
 }
 .meter.over > span {
-  background: var(--madder);
+  background: var(--action);
 }
 
 /* ---------- wallet chip ---------- */
@@ -882,30 +859,30 @@ a.rug-label:hover {
   list-style: none;
   display: grid;
   grid-template-columns: auto auto;
-  gap: 0 12px;
+  gap: 0 14px;
   align-items: center;
-  padding: 6px 10px;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  background: var(--paper);
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-s);
+  background: var(--cotton);
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: 0.8125rem;
   line-height: 1.3;
 }
 .wallet-chip::-webkit-details-marker {
   display: none;
 }
 .wallet-chip .who {
-  font-weight: 600;
-  max-width: 13ch;
+  font-weight: 700;
+  max-width: 14ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .wallet-chip .addr {
-  font-family: var(--mono);
-  color: var(--walnut-soft);
+  color: var(--slate);
   font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 .wallet-chip .bal {
   text-align: right;
@@ -918,125 +895,209 @@ a.rug-label:hover {
   top: calc(100% + 6px);
   z-index: 10;
   width: min(300px, calc(100vw - 32px));
-  background: var(--paper);
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  padding: 14px;
+  background: var(--cotton);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-m);
+  padding: 16px;
   display: grid;
   gap: 10px;
-  font-size: 0.88rem;
+  font-size: 0.875rem;
 }
 .wallet-menu .mono {
   overflow-wrap: anywhere;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
 }
 
 /* ---------- landing ---------- */
 
 .hero {
   display: grid;
-  gap: 32px;
-  padding-top: 8px;
+  gap: 40px;
+  padding: 12px 0 8px;
 }
-@media (min-width: 900px) {
+.hero-title {
+  font-weight: 800;
+  font-size: 2.441rem;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  max-width: 13ch;
+}
+.hero-lede {
+  margin-top: 18px;
+  max-width: 44ch;
+  font-size: 1.125rem;
+  color: var(--slate);
+}
+.hero-actions {
+  margin-top: 28px;
+}
+/* The worked example: one big rug on its loom, its tag tied beside it. */
+/* Phone: the rug first, its tag under it. From 560px: side by side, tied. */
+.hero-rug {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  justify-items: center;
+}
+.hero-rug > .kilim {
+  width: min(190px, 56vw);
+}
+.hero-tag {
+  position: relative;
+  width: 100%;
+  background: var(--cotton);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  padding: 18px 18px 16px;
+}
+.hero-tag-title {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.hero-tag .ledger {
+  margin-top: 12px;
+}
+@media (min-width: 560px) {
+  .hero-rug {
+    grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+    gap: 40px;
+    justify-items: stretch;
+    align-items: start;
+  }
+  .hero-rug > .kilim {
+    width: 100%;
+  }
+  .hero-tag {
+    margin-top: 28px;
+    padding-left: 34px;
+  }
+  .hero-tag::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 22px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--wall);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .hero-tag::after {
+    content: "";
+    position: absolute;
+    top: 26px;
+    right: calc(100% - 17px);
+    width: 58px;
+    height: 1px;
+    background: var(--line-strong);
+  }
+}
+@media (min-width: 720px) {
+  .hero-title {
+    font-size: 3.815rem;
+  }
+  .hero-rug {
+    grid-template-columns: 220px minmax(0, 300px);
+    gap: 44px;
+  }
+}
+@media (min-width: 980px) {
   .hero {
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 56px;
     align-items: center;
-  }
-}
-.hero .page-title {
-  font-size: 2.3rem;
-}
-@media (min-width: 720px) {
-  .hero .page-title {
-    font-size: 3.2rem;
+    padding-top: 28px;
   }
 }
 
-.steps {
-  list-style: none;
+/* How a loan ends: two outcomes side by side, one row per person. */
+.outcomes {
+  display: grid;
+  gap: 16px;
+}
+.outcome {
+  min-width: 0;
+  background: var(--cotton);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  padding: 20px;
+}
+.outcome h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.outcome > p {
+  color: var(--slate);
+  font-size: 0.9375rem;
+  margin-bottom: 14px;
+}
+.outcome dl {
   margin: 0;
-  padding: 0;
   display: grid;
-  gap: 0;
-  counter-reset: step;
-  border-top: 1px solid var(--walnut);
 }
-.steps li {
-  counter-increment: step;
+.outcome dl > div {
   display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 4px 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--rule);
-}
-.steps li::before {
-  content: counter(step);
-  grid-row: 1 / span 2;
-  font-family: var(--mono);
-  font-size: 1.2rem;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-}
-.steps strong {
-  font-weight: 600;
-}
-@media (min-width: 900px) {
-  .steps {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    border-top: 0;
-  }
-  .steps li {
-    grid-template-columns: 1fr;
-    border-top: 1px solid var(--walnut);
-    border-bottom: 0;
-    align-content: start;
-  }
-  .steps li::before {
-    grid-row: auto;
-    margin-bottom: 8px;
-  }
-}
-
-.roles {
-  display: grid;
+  grid-template-columns: 6.5rem 1fr;
   gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
 }
-@media (min-width: 720px) {
-  .roles {
+.outcome dt {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+.outcome dd {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+@media (min-width: 820px) {
+  .outcomes {
     grid-template-columns: 1fr 1fr;
   }
 }
-.role {
+
+/* Desks: plain rows, one per role. */
+.desks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+}
+.desks li {
+  border-bottom: 1px solid var(--line);
+}
+.desks a {
   display: grid;
-  gap: 6px;
-  padding: 16px;
-  background: var(--paper);
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  color: var(--walnut);
+  gap: 4px 24px;
+  padding: 16px 0;
+  color: var(--ink);
   text-decoration: none;
 }
-.role:hover {
-  border-color: var(--indigo);
-  outline: 1px solid var(--indigo);
-}
-.role-name {
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-.role-go {
-  color: var(--indigo);
-  font-weight: 600;
-  font-size: 0.9rem;
+.desks a:hover .desk-name {
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
+}
+.desk-name {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.desk-line {
+  color: var(--slate);
+  font-size: 0.9375rem;
+}
+.desk-who {
+  font-size: 0.875rem;
+  color: var(--slate);
+}
+@media (min-width: 820px) {
+  .desks a {
+    grid-template-columns: 9rem minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
 }
 
 /* ---------- feed & timeline ---------- */
@@ -1045,38 +1106,40 @@ a.rug-label:hover {
   list-style: none;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--line-strong);
 }
 .feed li {
   display: grid;
   gap: 4px;
   padding: 14px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 @media (min-width: 720px) {
   .feed li {
-    grid-template-columns: 150px 1fr auto;
-    gap: 16px;
+    grid-template-columns: 9.5rem 1fr auto;
+    gap: 20px;
     align-items: baseline;
   }
 }
 .feed time,
 .feed .tx {
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--walnut-soft);
+  font-size: 0.8125rem;
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
 }
 .feed .party {
   font-weight: 600;
 }
 .feed .rugref {
-  font-family: var(--mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline {
   list-style: none;
   margin: 0;
   padding: 0 0 0 22px;
-  border-left: 2px solid var(--walnut);
+  border-left: 1.5px solid var(--line-strong);
 }
 .timeline li {
   position: relative;
@@ -1085,52 +1148,48 @@ a.rug-label:hover {
 .timeline li::before {
   content: "";
   position: absolute;
-  left: -29px;
-  top: 4px;
-  width: 12px;
-  height: 12px;
-  background: var(--wool);
-  border: 2px solid var(--walnut);
-  transform: rotate(45deg);
+  left: -28px;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  background: var(--wall);
+  border: 1.5px solid var(--ink);
 }
 .timeline li.key::before {
-  background: var(--madder);
-  border-color: var(--madder);
+  background: var(--ink);
 }
 .timeline time {
   display: block;
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--walnut-soft);
+  font-size: 0.8125rem;
+  color: var(--slate);
 }
 
 .addr-full {
-  font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 dialog.confirm {
-  border: 1px solid var(--walnut);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--walnut);
-  padding: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-m);
+  background: var(--cotton);
+  color: var(--ink);
+  padding: 24px;
   max-width: min(440px, calc(100vw - 32px));
 }
 dialog.confirm::backdrop {
-  background: rgba(43, 33, 27, 0.45);
+  background: rgba(28, 36, 64, 0.45);
 }
 
 .skeleton {
-  color: var(--walnut-soft);
-  font-size: 0.92rem;
+  color: var(--slate);
+  font-size: 0.9375rem;
   padding: 18px 0;
 }
 
 .code-box {
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   width: 100%;
   min-height: 90px;
   word-break: break-all;

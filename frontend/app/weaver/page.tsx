@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { BorrowForm, HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
-import { MoneyBlock, MoneyInline } from "@/components/money";
+import { MoneyBlock, MoneyInline, MoneySentence } from "@/components/money";
 import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { u64, type Loan, type Rug } from "@/lib/contract";
@@ -54,22 +54,27 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
 
   return (
     <>
-      <div className="stats three" style={{ marginTop: 24 }}>
-        <div>
-          <span className="k">Rugs at the store</span>
-          <span className="mono" style={{ fontSize: "1.4rem" }}>
-            {active.length}
-          </span>
-        </div>
-        <div>
-          <span className="k">You owe now</span>
-          <MoneyBlock units={owed} />
-        </div>
-        <div>
-          <span className="k">Wallet</span>
-          {balance === undefined ? <span className="muted small">Reading…</span> : balance === null ? <span className="muted small">Can't hold USDC yet</span> : <MoneyBlock units={balance} />}
-        </div>
-      </div>
+      <p className="summary">
+        {owed > 0n ? (
+          <>
+            You owe <MoneySentence units={owed} />.
+          </>
+        ) : (
+          <>You owe nothing.</>
+        )}{" "}
+        {active.length === 0
+          ? "None of your rugs are at a store right now."
+          : active.length === 1
+            ? "One of your rugs is at a store."
+            : `${active.length} of your rugs are at a store.`}{" "}
+        {balance === null ? (
+          "This wallet can't hold USDC yet."
+        ) : balance === undefined ? null : (
+          <>
+            Your wallet holds <MoneySentence units={balance} />.
+          </>
+        )}
+      </p>
 
       <Section label="Your rugs" count={active.length}>
         {active.length === 0 ? (

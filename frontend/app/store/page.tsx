@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BuyoutButton, CoSignPanel, HandedOver } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
-import { MoneyBlock, MoneyInline } from "@/components/money";
+import { MoneyBlock, MoneyInline, MoneySentence } from "@/components/money";
 import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract";
@@ -153,20 +153,23 @@ function StoreStatus({ store, reason }: { store: Store; reason?: "Platform" | "M
           is permanent.
         </div>
       )}
-      <div className="stats three">
-        <div>
-          <span className="k">Limit set by the platform</span>
-          <MoneyBlock units={store.limit} />
-        </div>
-        <div>
-          <span className="k">Lent out on your rugs now</span>
-          <MoneyBlock units={store.open_principal} />
-        </div>
-        <div>
-          <span className="k">Still available</span>
-          <MoneyBlock units={available > 0n ? available : 0n} />
-        </div>
-      </div>
+      <p className="summary" style={{ marginTop: 0 }}>
+        The platform lets up to <MoneySentence units={store.limit} /> be lent out on your rugs.{" "}
+        {store.open_principal === 0n ? (
+          "Nothing is out right now."
+        ) : (
+          <>
+            <MoneySentence units={store.open_principal} /> is out now
+            {available > 0n ? (
+              <>
+                , so <MoneySentence units={available} /> is left.
+              </>
+            ) : (
+              ", so the limit is used up."
+            )}
+          </>
+        )}
+      </p>
       <div className={pct > 100 ? "meter over" : "meter"} role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Limit used">
         <span style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
@@ -183,7 +186,7 @@ function OverdueTicket({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bi
         <KV k="Weaver">
           <Party address={loan.weaver} />
         </KV>
-        <KV k="Investor">{loan.investor ? <Party address={loan.investor} /> : "—"}</KV>
+        <KV k="Investor">{loan.investor ? <Party address={loan.investor} /> : "â€”"}</KV>
         <KV k="Was due">
           <span className="mono">{whenSec(loan.end_at!)}</span>
         </KV>
@@ -294,7 +297,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
               className="input mono"
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
-              placeholder="G…"
+              placeholder="Gâ€¦"
               aria-invalid={pasted !== "" && !weaverOk}
               spellCheck={false}
             />
@@ -313,7 +316,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
             className="input"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Hand-knotted wool, madder red field, 160 × 230 cm"
+            placeholder="Hand-knotted wool, madder red field, 160 Ã— 230 cm"
             aria-invalid={description !== "" && !descOk}
           />
           <span className="hint">
@@ -331,7 +334,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
           />
           <span className="hint">
             {priceOk ? (
-              <span className="mono">≈ {formatLocal(units!)} TRY</span>
+              <span className="mono">â‰ˆ {formatLocal(units!)} TRY</span>
             ) : (
               <span className="error-text">Enter a USDC amount above zero, up to 7 decimals.</span>
             )}{" "}
