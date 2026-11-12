@@ -84,8 +84,15 @@ describe("countdown clock", () => {
 });
 
 describe("contract errors", () => {
-  it("maps every code 1-21 to a plain message", () => {
-    for (let c = 1; c <= 21; c++) expect(CONTRACT_ERRORS[c]?.message.length).toBeGreaterThan(10);
+  it("maps every code 1-24 to a plain message", () => {
+    for (let c = 1; c <= 24; c++) expect(CONTRACT_ERRORS[c]?.message.length).toBeGreaterThan(10);
+  });
+  it("names the role-check errors as the contract does", () => {
+    expect([22, 23, 24].map((c) => CONTRACT_ERRORS[c].name)).toEqual(["WeaverIsStore", "StoreCannotBorrow", "InvestorIsParty"]);
+  });
+  it("explains a store trying to borrow", () => {
+    const raw = `HostError: Error(Contract, #23)\n 0: [Diagnostic Event] contract:${CONTRACT_ID}, topics:[error, Error(Contract, #23)]`;
+    expect(explainError(raw).message).toBe("Stores can't borrow against rugs. Only weavers can ask for a loan.");
   });
   it("reads a real simulation error", () => {
     const raw = `HostError: Error(Contract, #14)\n\nEvent log (newest first):\n   0: [Diagnostic Event] contract:${CONTRACT_ID}, topics:[error, Error(Contract, #14)], data:"escalating"`;

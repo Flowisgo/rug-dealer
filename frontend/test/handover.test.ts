@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { Rug } from "../lib/contract";
 import { decodeNative, findRedeem, type AppEvent } from "../lib/events";
+import { CONTRACT_ID } from "../lib/deployment";
 import { checkHandover, forgetHandedOver, handoverKey, type Handover } from "../lib/handover";
 
 const STORE = "GSTORE";
 const WEAVER = "GWEAVER";
 const rug = (over: Partial<Rug> = {}): Rug => ({ id: 4n, store: STORE, description: "d", price: 1n, owner: WEAVER, status: "Free", ...over });
-const code: Handover = { v: 1, rug: "4", holder: WEAVER, store: STORE, auth: [], until: 1 };
+const code: Handover = { v: 1, rug: "4", holder: WEAVER, store: STORE, auth: [], until: 1, contract: CONTRACT_ID };
 
 describe("what the store sees for a hand-over code", () => {
   it("ready while the holder still holds a free rug", () => expect(checkHandover(code, rug())).toBe("ready"));
+  it("refuses a code signed for an earlier deployment, even if the rug number exists", () => {
+    expect(checkHandover({ ...code, contract: "COLDCONTRACT" }, rug())).toBe("old-contract");
+    const { contract: _, ...legacy } = code;
+    expect(checkHandover(legacy, rug())).toBe("old-contract");
+  });
+  it("keeps saved codes apart per contract", () => expect(handoverKey(4n)).toContain(CONTRACT_ID));
   it("handed over once the rug is Redeemed, so there is no sign button", () =>
     expect(checkHandover(code, rug({ status: "Redeemed" }))).toBe("handed-over"));
   it("unknown rug", () => expect(checkHandover(code, undefined)).toBe("unknown-rug"));

@@ -284,7 +284,12 @@ export function CoSignPanel({
       )}
       {parsed && !doneHash && (
         <div style={{ display: "grid", gap: 12 }}>
-          {state === "handed-over" && rug ? (
+          {state === "old-contract" ? (
+            <p className="error-text">
+              This code is from an earlier version of the demo, before it was reset. Ask the holder to press Collect the rug again and send a
+              new link.
+            </p>
+          ) : state === "handed-over" && rug ? (
             <AlreadyHandedOver rug={rug} events={events} />
           ) : (
             <p>

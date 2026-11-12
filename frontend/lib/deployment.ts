@@ -7,14 +7,14 @@ export const HORIZON_URL = "https://horizon-testnet.stellar.org";
 export const FRIENDBOT_URL = "https://friendbot.stellar.org";
 export const EXPLORER_URL = "https://stellar.expert/explorer/testnet";
 
-export const CONTRACT_ID = "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG";
+export const CONTRACT_ID = "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR";
 export const USDC_ID = "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM";
 export const USDC_CODE = "USDC";
 export const USDC_ISSUER = "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY";
 
 /** Ledger that deployed the contract. The event feed starts here (or at the
  * oldest ledger the RPC still keeps, whichever is later). */
-export const DEPLOY_LEDGER = 5688349;
+export const DEPLOY_LEDGER = 5695308;
 
 export const ACCOUNTS = {
   admin: "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",

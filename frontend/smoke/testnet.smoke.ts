@@ -1,8 +1,24 @@
 // Read-only smoke test against the live testnet deployment.
 // Only simulations and RPC reads: nothing is signed, nothing is sent.
 import { beforeAll, describe, expect, it } from "vitest";
-import { getConfig, getLoan, getRug, getStore, listLoans, listRugs, quote, usdcBalance, type Config } from "../lib/contract";
-import { ACCOUNTS, USDC_ID } from "../lib/deployment";
+import {
+  addr,
+  getConfig,
+  getLoan,
+  getRug,
+  getStore,
+  i128,
+  listLoans,
+  listRugs,
+  quote,
+  simulateRead,
+  str,
+  u32,
+  u64,
+  usdcBalance,
+  type Config,
+} from "../lib/contract";
+import { ACCOUNTS, CONTRACT_ID, USDC_ID } from "../lib/deployment";
 import { fetchEvents } from "../lib/events";
 import { quoteLocally, UNIT } from "../lib/money";
 
@@ -43,6 +59,19 @@ describe("testnet deployment", () => {
 
   it("maps a missing loan to the plain error", async () => {
     await expect(getLoan(999_999n)).rejects.toMatchObject({ code: 14 });
+  });
+
+  // Simulations only: the contract's role checks, without signing or sending.
+  it("refuses a certificate issued to a store", async () => {
+    await expect(
+      simulateRead(CONTRACT_ID, "mint_rug", [addr(ACCOUNTS.store), addr(ACCOUNTS.store), str("smoke test"), i128(600n * UNIT)]),
+    ).rejects.toMatchObject({ code: 22 });
+  });
+
+  it("refuses a store borrowing against a rug it bought", async () => {
+    const bought = (await listRugs()).find((r) => r.owner === ACCOUNTS.store && r.store === ACCOUNTS.store && r.status === "Free");
+    expect(bought, "the buy-out demo leaves the store holding a free rug").toBeDefined();
+    await expect(simulateRead(CONTRACT_ID, "request_loan", [addr(ACCOUNTS.store), u64(bought!.id), u32(1)])).rejects.toMatchObject({ code: 23 });
   });
 
   it("reads USDC balances", async () => {

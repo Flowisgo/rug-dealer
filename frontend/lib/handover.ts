@@ -27,15 +27,20 @@ export type Handover = {
   auth: string[];
   /** Last ledger the holder's signature is valid for. */
   until: number;
+  /** The RugDealer contract the code was signed for. Codes from before this
+   * field existed belong to an earlier deployment. */
+  contract?: string;
 };
 
 /** ~24 hours of 5-second ledgers. */
 const VALID_LEDGERS = 17_280;
 
-/** Where the holder's signed code is kept between page loads. */
-export const handoverKey = (rugId: bigint | string) => `rugdealer:handover:${rugId}`;
+/** Where the holder's signed code is kept between page loads. Scoped to the
+ * contract, because rug numbers restart when the contract is redeployed. */
+export const handoverKey = (rugId: bigint | string) => `rugdealer:${CONTRACT_ID}:handover:${rugId}`;
 
 export type HandoverCheck =
+  | "old-contract" // signed for an earlier deployment of the contract
   | "unknown-rug" // no such rug (yet) in this deployment
   | "wrong-store" // the code names another store than the rug's
   | "handed-over" // the rug is already Redeemed: nothing more to do
@@ -44,6 +49,7 @@ export type HandoverCheck =
 
 /** What the store should see for a hand-over code, given the rug's current record. */
 export function checkHandover(h: Handover, rug: Rug | undefined): HandoverCheck {
+  if (h.contract !== CONTRACT_ID) return "old-contract";
   if (!rug) return "unknown-rug";
   if (rug.store !== h.store) return "wrong-store";
   if (rug.status === "Redeemed") return "handed-over";
@@ -134,7 +140,7 @@ export async function signHandover(holder: string, rugId: bigint, store: string)
     }
   }
   if (!signed) throw new AppError("The network didn't ask for the holder's signature. Refresh and try again.");
-  return { v: 1, rug: rugId.toString(), holder, store, auth, until };
+  return { v: 1, rug: rugId.toString(), holder, store, auth, until, contract: CONTRACT_ID };
 }
 
 /** Store side: co-sign and submit a holder's hand-over. */

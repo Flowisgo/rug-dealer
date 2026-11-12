@@ -1,6 +1,6 @@
 import { CONTRACT_ID, USDC_ID } from "./deployment";
 
-/** Contract error codes 1–21 (docs/contract-interface.md) in plain words. */
+/** Contract error codes 1–24 (docs/contract-interface.md) in plain words. */
 export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> = {
   1: { name: "InvalidConfig", message: "The contract settings are invalid. This is a deployment problem, not something you did." },
   2: { name: "StoreAlreadyRegistered", message: "This store is already approved. Change its limit instead." },
@@ -23,6 +23,9 @@ export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> 
   19: { name: "BuyoutWindowClosed", message: "The store's buy-out window has closed. The investor can now take the rug." },
   20: { name: "BuyoutWindowOpen", message: "The store can still buy the rug. You can take it once the buy-out window closes." },
   21: { name: "InvalidState", message: "The contract found records that don't match. Refresh and try again." },
+  22: { name: "WeaverIsStore", message: "A store can't be the weaver on a rug certificate. Issue it to the weaver's own account." },
+  23: { name: "StoreCannotBorrow", message: "Stores can't borrow against rugs. Only weavers can ask for a loan." },
+  24: { name: "InvestorIsParty", message: "You can't lend on a loan you're part of. Another investor has to fund it." },
 };
 
 /** Errors from the USDC token contract (Stellar Asset Contract). */

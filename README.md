@@ -3,7 +3,7 @@
 Weavers can borrow against a finished rug instead of selling it cheaply. This is a working prototype on Stellar Testnet: a Soroban contract and a web app with one desk for each role.
 
 **Live app:** _added after the Vercel deployment_
-**Contract on Stellar Testnet:** [`CB54ULGY…QFWG`](https://stellar.expert/explorer/testnet/contract/CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG)
+**Contract on Stellar Testnet:** [`CB5KLLH5…KOVR`](https://stellar.expert/explorer/testnet/contract/CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR)
 
 ![The RugDealer landing page with the worked example](frontend/screenshots/landing-1280.jpg)
 
@@ -22,7 +22,7 @@ A weaver often needs cash the day a rug comes off the loom. A real buyer may pay
    - **Weaver doesn't repay.** The store must buy the rug at the same price within 7 days of the end date, and the investor is paid from that.
    - **Weaver repays late.** Until the store's payment lands, the weaver can still repay.
 
-Either way, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store.
+Either way, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
 
 ### Worked example
 
@@ -99,7 +99,7 @@ In this demo deployment, **1 loan month is 60 seconds** and the store's buy-out 
 | Item | Value |
 |---|---|
 | Network | Stellar Testnet |
-| RugDealer contract | `CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG` |
+| RugDealer contract | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
 | Test USDC (contract) | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | Test USDC (asset) | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 
