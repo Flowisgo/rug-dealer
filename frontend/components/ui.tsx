@@ -116,9 +116,9 @@ export function toneOf(tag: ReactNode): Tone {
   return isValidElement<{ tone: Tone }>(tag) && tag.type === Tag ? tag.props.tone : "plain";
 }
 
-/** A rug seen from above: a plain field with crisp long sides, end bands of
- * stepped diamonds dyed by status, knotted fringe, and the rug number on a
- * cloth label sewn to the top band. */
+/** A rug seen from above: a plain field with crisp long sides, woven end
+ * bands dyed by status and seeded by the rug number, knotted fringe, and the
+ * rug number on a cloth label sewn to the top band. */
 export function RugCard({
   id,
   name,
@@ -133,6 +133,7 @@ export function RugCard({
   return (
     <article className="rug" data-tone={toneOf(tag)}>
       <RugCloth
+        seed={Number(id)}
         head={
           <div className="rug-head">
             <Link className="rug-label" href={`/rug/${id}`} title="Open this rug's history">

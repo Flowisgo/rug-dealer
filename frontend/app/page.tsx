@@ -83,6 +83,7 @@ export default function Home() {
 
         <article className="rug" data-tone="plain" aria-label="Worked example">
           <RugCloth
+            seed={1500}
             head={
               <div className="rug-head">
                 <span className="rug-label">No. 0000</span>

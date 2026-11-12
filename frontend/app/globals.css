@@ -461,10 +461,11 @@ textarea.input {
 /* ---------- rug cards ---------- */
 
 /* A flat-woven rug seen from above. Long sides are a crisp edge: 1px walnut
-   with 2px of dye inside. The short ends (top and bottom, at every width) carry
-   an end band of stepped diamonds and knotted fringe, drawn by
-   components/rug.tsx. The dye follows the status tag (data-tone); the field
-   stays paper. Layout of the head follows the card's own width. */
+   with 2px of dye inside. The short ends (top and bottom, at every width)
+   carry an end band of filled motifs and knotted fringe, drawn by
+   components/rug.tsx and seeded by the rug number. The dye follows the
+   status tag (data-tone); the field stays paper. Layout of the head follows
+   the card's own width. */
 
 .card-list {
   display: grid;
@@ -490,28 +491,74 @@ textarea.input {
   --dye: color-mix(in srgb, var(--walnut-soft) 45%, var(--wool));
 }
 
+/* Fringe: soft fibres in bundles, knot against the rug. Cells of four bundles
+   fill the width whole (auto-fill); extra cells wrap out of sight. */
 .rug-fringe {
-  height: 14px;
-  margin: 0 3px;
-  color: var(--walnut-soft);
-  line-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  grid-auto-rows: 22px;
+  height: 22px;
+  margin: 0 4px;
+  overflow: hidden;
+}
+.rug-fringe-top {
+  transform: scaleY(-1);
+}
+.rug-fringe svg {
+  display: block;
+  overflow: visible;
+}
+.rug-fringe path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--walnut-soft) 78%, var(--wool));
+  stroke-width: 1.15;
+  stroke-linecap: round;
+}
+.rug-fringe ellipse {
+  fill: color-mix(in srgb, var(--walnut-soft) 90%, var(--wool));
 }
 .rug[data-tone="done"] .rug-fringe {
-  opacity: 0.55;
+  opacity: 0.6;
 }
+
 .rug-cloth {
   border: 1px solid var(--walnut);
   border-radius: var(--radius);
   overflow: hidden;
 }
+
+/* End band: abrash guard stripes around a row of motifs on wool. As many
+   whole motifs as fit, about one per 112px, evenly spaced. */
 .rug-band {
-  height: 20px;
-  color: var(--dye);
-  line-height: 0;
+  position: relative;
+  display: grid;
+  grid-template-rows: 2px 22px 2px;
+  height: 26px;
+  background: var(--wool);
 }
-.rug-band svg,
-.rug-fringe svg {
+.rug-motifs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-auto-rows: 22px;
+  place-items: center;
+  overflow: hidden;
+}
+.rug-motif svg {
   display: block;
+}
+/* Weft: faint horizontal threads over the whole band, a darker and a lighter
+   pass every 3px, so the band reads as woven without showing stripes. */
+.rug-band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--walnut) 7%, transparent) 0 1px,
+    transparent 1px 2px,
+    color-mix(in srgb, var(--wool) 18%, transparent) 2px 3px
+  );
 }
 .rug-field {
   background: var(--paper);

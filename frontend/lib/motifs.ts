@@ -1,87 +1,174 @@
-// Rug-card weaving maths: motifs on a grid of 2px squares, laid out as whole
-// repeats centred in a band, and knotted fringe. Pure, so it can be tested.
+// Rug-card weaving: the end-band diamonds and fringe, as pure data so every rug
+// can be drawn on the server and tested. Each rug is seeded by its number, so
+// two rugs side by side differ a little and the same rug always looks the same.
 
-/** One motif on a grid of 2px squares, 7 rows tall. `tile` repeats; `cap` is
- * the number of leading tile columns drawn once more at the end, so the run
- * starts and ends on the same whole shape. */
-export type Motif = { name: string; tile: string[]; cap: number };
+/** Paint of a motif layer. "body" takes the motif's abrash tint of the dye. */
+export type Paint = "body" | "wool" | "walnut" | "saffron";
 
-/** Stepped diamonds with an open eye, a dot between each pair. The run ends
- * on a whole diamond at both corners. */
-export const DIAMONDS: Motif = {
-  name: "Stepped diamonds",
-  tile: [
-    "...#......",
-    "..###.....",
-    ".##.##....",
-    "##.#.##.#.",
-    ".##.##....",
-    "..###.....",
-    "...#......",
-  ],
-  cap: 7,
+export type MotifSpec = {
+  /** One step taller than the others. */
+  tall: boolean;
+  /** Abrash: 0 = the dye, 1 = a touch darker, 2 = a touch lighter. */
+  tint: 0 | 1 | 2;
+  centre: "wool" | "walnut" | "saffron";
+  /** 0 = small centre, 1 = a step larger. */
+  centreSize: 0 | 1;
 };
 
+export type ThreadSpec = { x: number; len: number; lean: number; sway: number };
+export type BundleSpec = { knot: number; threads: ThreadSpec[] };
 
-export const CELL = 2; // px per square
-export const GUARD = 2; // guard stripe
-export const GAP = 1; // wool between guard and motif
-export const ROWS = 7;
-export const BAND_HEIGHT = 2 * (GUARD + GAP) + ROWS * CELL; // 20px
-export const FRINGE_HEIGHT = 14;
+/** A block of the guard stripe's abrash: tint from `from`% to the next block. */
+export type GuardBlock = { from: number; tint: 0 | 1 | 2 };
 
-/** Path for whole tiles centred in `width`, plus the closing cap. One path,
- * horizontal runs of squares merged. */
-export function motifPath(m: Motif, width: number, top: number): { d: string; left: number; used: number } {
-  const tileW = m.tile[0].length;
-  const cols = Math.floor(width / CELL);
-  const n = Math.floor((cols - m.cap) / tileW);
-  if (n < 1) return { d: "", left: 0, used: 0 };
-  const total = n * tileW + m.cap;
-  const left = Math.floor((cols - total) / 2) * CELL + Math.floor((width % CELL) / 2);
-  let d = "";
-  for (let r = 0; r < ROWS; r++) {
-    const row = m.tile[r];
-    let start = -1;
-    for (let c = 0; c <= total; c++) {
-      const on = c < total && row[c % tileW] === "#";
-      if (on && start < 0) start = c;
-      if (!on && start >= 0) {
-        d += `M${left + start * CELL} ${top + r * CELL}h${(c - start) * CELL}v${CELL}h${-(c - start) * CELL}z`;
-        start = -1;
-      }
-    }
-  }
-  return { d, left, used: total * CELL };
+export type Weave = {
+  motifs: MotifSpec[];
+  guards: { top: GuardBlock[]; bottom: GuardBlock[] };
+  fringe: { top: BundleSpec[]; bottom: BundleSpec[] };
+};
+
+/** Motif box in px. The band is 26px: 2px guard, 22px field, 2px guard. */
+export const MOTIF_W = 24;
+export const MOTIF_H = 20;
+export const BAND_H = 26;
+/** Motif cells: as many whole motifs as fit, about one per 112px. */
+export const MOTIF_CELL = 112;
+export const MOTIF_COUNT = 12; // enough for a 1340px card
+/** Fringe cells hold four bundles each. */
+export const FRINGE_H = 22;
+export const FRINGE_CELL = 56;
+export const FRINGE_CELLS = 26; // enough for a 1450px card
+export const BUNDLES_PER_CELL = 4;
+
+/** mulberry32: small, fast, deterministic. */
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
+/** Mix the rug number and a salt into a 32-bit seed. */
+const seedOf = (n: number, salt: number) => Math.imul((n >>> 0) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(salt + 1, 0xc2b2ae35);
 
-/** Small deterministic noise, 0..1, so the fringe varies but never changes. */
-const jitter = (i: number, salt: number) => (((i + 1) * 9301 + salt * 49297) % 233280) / 233280;
+const round = (v: number, places = 2) => Math.round(v * 10 ** places) / 10 ** places;
 
-export const FRINGE = { pitch: 12, bundle: 5, threads: 3, warp: 3, knot: 2, inset: 3 } as const;
-
-/** Fringe: warp threads leave the rug, are gathered in a knot, then hang
- * loose for 5 to 9px, each bundle a little different. Centred in `width`. */
-export function fringePath(width: number, at: "top" | "bottom"): string {
-  const { pitch, bundle, threads, warp, knot, inset } = FRINGE;
-  const n = Math.floor((width - 2 * inset - bundle) / pitch) + 1;
-  if (n < 1) return "";
-  const left = Math.floor((width - ((n - 1) * pitch + bundle)) / 2);
-  // Draw for the bottom end (y grows away from the rug), flip for the top.
-  const rect = (x: number, y: number, w: number, h: number) =>
-    `M${x} ${at === "bottom" ? y : FRINGE_HEIGHT - y - h}h${w}v${h}h${-w}z`;
-  let d = "";
+/** Abrash: tints that drift slowly, holding for a few steps before moving to
+ * a neighbouring tint. */
+function abrash(r: () => number, n: number, hold: number): (0 | 1 | 2)[] {
+  const out: (0 | 1 | 2)[] = [];
+  let t: 0 | 1 | 2 = r() < 0.5 ? 0 : r() < 0.5 ? 1 : 2;
   for (let i = 0; i < n; i++) {
-    const x = left + i * pitch;
-    const knotAt = warp + (jitter(i, 3) < 0.3 ? 1 : 0); // some knots sit a pixel lower
-    for (let t = 0; t < threads; t++) d += rect(x + t * 2, 0, 1, knotAt);
-    d += rect(x, knotAt, bundle, knot);
-    const free = FRINGE_HEIGHT - knotAt - knot;
-    for (let t = 0; t < threads; t++) {
-      const len = Math.max(4, free - Math.floor(jitter(i * threads + t, 2) * 5)); // 5..9 mostly
-      d += rect(x + t * 2, knotAt + knot, 1, len);
-    }
+    if (i > 0 && r() < 1 / hold) t = t === 0 ? (r() < 0.5 ? 1 : 2) : 0;
+    out.push(t);
   }
-  return d;
+  return out;
 }
+
+function guard(r: () => number): GuardBlock[] {
+  const tints = abrash(r, 4, 1.4);
+  const cuts = [0, 15 + r() * 20, 40 + r() * 20, 70 + r() * 15].map((v) => round(v, 1));
+  return cuts.map((from, i) => ({ from, tint: tints[i] }));
+}
+
+function bundle(r: () => number): BundleSpec {
+  const count = r() < 0.6 ? 4 : 3;
+  const lean = (r() - 0.5) * 2 * 3; // whole bundle leans -3..3 degrees
+  const threads: ThreadSpec[] = [];
+  for (let t = 0; t < count; t++) {
+    threads.push({
+      x: round((t - (count - 1) / 2) * 1.25),
+      len: round(14 + r() * 4, 1), // 14..18px
+      lean: round(lean + (r() - 0.5) * 1.5, 1),
+      sway: round((r() - 0.5) * 1.6, 2),
+    });
+  }
+  return { knot: round(1.7 + r() * 0.5), threads };
+}
+
+/** Everything that varies on one rug, from its number. */
+export function weave(rugNumber: number): Weave {
+  const r = rng(seedOf(rugNumber, 1));
+  const tints = abrash(r, MOTIF_COUNT, 3.5);
+  const centre = r() < 0.7 ? "wool" : "walnut";
+  const centreSize = (r() < 0.5 ? 0 : 1) as 0 | 1;
+  const tall = Math.floor(r() * 3); // within the first three, so phones see it too
+  const odd = 1 + Math.floor(r() * (MOTIF_COUNT - 1)); // one motif with the other centre size
+  const saffron = r() < 0.35 ? Math.floor(r() * 3) : -1; // now and then, one saffron centre
+  const motifs = tints.map((tint, i) => ({
+    tall: i === tall,
+    tint,
+    centre: i === saffron ? "saffron" : centre,
+    centreSize: (i === odd ? 1 - centreSize : centreSize) as 0 | 1,
+  })) satisfies MotifSpec[];
+  const fr = rng(seedOf(rugNumber, 2));
+  const n = FRINGE_CELLS * BUNDLES_PER_CELL;
+  return {
+    motifs,
+    guards: { top: guard(r), bottom: guard(r) },
+    fringe: { top: Array.from({ length: n }, () => bundle(fr)), bottom: Array.from({ length: n }, () => bundle(fr)) },
+  };
+}
+
+/** Union of row rectangles: a stepped shape, centred on x = MOTIF_W / 2. */
+function rows(halfWidths: number[], rowH: number, top: number): string {
+  const cx = MOTIF_W / 2;
+  return halfWidths
+    .map((hw, i) => (hw > 0 ? `M${round(cx - hw)} ${round(top + i * rowH)}h${round(hw * 2)}v${rowH}h${round(-hw * 2)}z` : ""))
+    .join("");
+}
+
+/** Pick the middle `k` rows' indices of an `n`-row shape. */
+const middle = (n: number, k: number) => Array.from({ length: k }, (_, i) => Math.floor((n - k) / 2) + i);
+
+/**
+ * A filled stepped diamond with a small contrasting centre, back to front.
+ * Steps are wider than they are tall, as a weft-faced weave builds a diagonal
+ * from horizontal passes.
+ */
+export function motifLayers(m: MotifSpec): { d: string; paint: Paint }[] {
+  const rowH = 2.5;
+  const outer = m.tall ? [2, 5, 8, 11, 11, 8, 5, 2] : [2, 5, 8, 11, 8, 5, 2];
+  const top = (MOTIF_H - outer.length * rowH) / 2;
+  const idx = middle(outer.length, (m.centreSize ? 3 : 1) + (outer.length % 2 ? 0 : 1));
+  const centre = outer.map((_, i) => {
+    const p = idx.indexOf(i);
+    if (p < 0) return 0;
+    if (!m.centreSize) return 2.5;
+    return p === 0 || p === idx.length - 1 ? 1.5 : 4.5;
+  });
+  return [
+    { d: rows(outer, rowH, top), paint: "body" },
+    { d: rows(centre, rowH, top), paint: m.centre },
+  ];
+}
+
+/** One fringe bundle, knot at the rug edge (y = 0 side), threads hanging down.
+ * Local coordinates, centred on x = 0. */
+export function bundleShape(b: BundleSpec): { knot: { cy: number; rx: number; ry: number }; threads: string[] } {
+  const knotY = 2.4;
+  const start = knotY + b.knot * 0.6;
+  const threads = b.threads.map((t) => {
+    const lean = Math.tan((t.lean * Math.PI) / 180) * t.len;
+    const endX = t.x * 1.5 + lean;
+    const endY = Math.min(FRINGE_H - 1, start + t.len - 2);
+    const cx = (t.x + endX) / 2 + t.sway;
+    const cy = (start + endY) / 2;
+    return `M${round(t.x)} ${round(start)}Q${round(cx)} ${round(cy)} ${round(endX)} ${round(endY)}`;
+  });
+  return { knot: { cy: knotY, rx: round(b.knot + 0.4), ry: b.knot }, threads };
+}
+
+/** CSS colour of an abrash tint of the rug's dye. */
+export const tintColour = (t: 0 | 1 | 2) =>
+  t === 0 ? "var(--dye)" : t === 1 ? "color-mix(in srgb, var(--dye) 86%, var(--walnut))" : "color-mix(in srgb, var(--dye) 82%, var(--wool))";
+
+/** Hard-edged abrash blocks for a guard stripe. */
+export const guardBackground = (blocks: GuardBlock[]) =>
+  `linear-gradient(90deg, ${blocks
+    .map((b, i) => `${tintColour(b.tint)} ${b.from}% ${i + 1 < blocks.length ? blocks[i + 1].from : 100}%`)
+    .join(", ")})`;

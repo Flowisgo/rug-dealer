@@ -1,64 +1,115 @@
 import { describe, expect, it } from "vitest";
-import { CELL, DIAMONDS, FRINGE_HEIGHT, fringePath, motifPath } from "../lib/motifs";
+import {
+  BUNDLES_PER_CELL,
+  FRINGE_CELLS,
+  FRINGE_H,
+  MOTIF_COUNT,
+  MOTIF_H,
+  MOTIF_W,
+  bundleShape,
+  guardBackground,
+  motifLayers,
+  weave,
+  type MotifSpec,
+} from "../lib/motifs";
 
-/** Rects of a path made only of `M x y h w v h h -w z` squares. */
+/** Rects of a path made only of `M x y h w v h h -w z` rows. */
 const rects = (d: string) =>
-  [...d.matchAll(/M(-?\d+) (-?\d+)h(-?\d+)v(-?\d+)h-?\d+z/g)].map(([, x, y, w, h]) => ({ x: +x, y: +y, w: +w, h: +h }));
+  [...d.matchAll(/M(-?[\d.]+) (-?[\d.]+)h(-?[\d.]+)v(-?[\d.]+)h-?[\d.]+z/g)].map(([, x, y, w, h]) => ({ x: +x, y: +y, w: +w, h: +h }));
 
-describe("end band of stepped diamonds", () => {
-  it("uses only whole pixels", () => {
-    for (const width of [339, 343, 470, 1046]) {
-      for (const r of rects(motifPath(DIAMONDS, width, 3).d)) {
-        for (const v of [r.x, r.y, r.w, r.h]) expect(Number.isInteger(v)).toBe(true);
-      }
+describe("seeding by rug number", () => {
+  it("the same number always gives the same rug", () => {
+    for (const n of [0, 1, 7, 42, 1500]) expect(weave(n)).toEqual(weave(n));
+  });
+
+  it("different numbers give different rugs", () => {
+    const seen = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => JSON.stringify(weave(n))));
+    expect(seen.size).toBe(12);
+    // Neighbours differ in the band itself, not only in the fringe.
+    for (let n = 1; n < 12; n++) {
+      const a = weave(n), b = weave(n + 1);
+      expect(JSON.stringify([a.motifs, a.guards])).not.toBe(JSON.stringify([b.motifs, b.guards]));
     }
   });
 
-  it("draws whole diamonds, centred, starting and ending on a diamond", () => {
-    for (const width of [339, 343, 470, 1046]) {
-      const { d, left, used } = motifPath(DIAMONDS, width, 3);
-      const all = rects(d);
-      const minX = Math.min(...all.map((r) => r.x));
-      const maxX = Math.max(...all.map((r) => r.x + r.w));
-      expect(minX).toBe(left);
-      expect(maxX).toBe(left + used);
-      expect(minX).toBeGreaterThanOrEqual(0);
-      expect(maxX).toBeLessThanOrEqual(width);
-      // Margins differ by at most one square.
-      expect(Math.abs(left - (width - maxX))).toBeLessThanOrEqual(CELL);
-      // The run is n tiles plus one more diamond.
-      expect((used / CELL - DIAMONDS.cap) % DIAMONDS.tile[0].length).toBe(0);
-      // Mirror image: the band reads the same from either corner.
-      const mirrored = all.map((r) => `${left + used - (r.x - left) - r.w},${r.y},${r.w}`).sort();
-      expect(mirrored).toEqual(all.map((r) => `${r.x},${r.y},${r.w}`).sort());
+  it("varies within a rug: one taller motif, at most one saffron centre, some abrash", () => {
+    let withAbrash = 0;
+    for (let n = 1; n <= 50; n++) {
+      const { motifs } = weave(n);
+      expect(motifs).toHaveLength(MOTIF_COUNT);
+      expect(motifs.filter((m) => m.tall)).toHaveLength(1);
+      expect(motifs.findIndex((m) => m.tall)).toBeLessThan(3); // visible on a phone too
+      expect(motifs.filter((m) => m.centre === "saffron").length).toBeLessThanOrEqual(1);
+      if (new Set(motifs.map((m) => m.tint)).size > 1) withAbrash++;
     }
+    expect(withAbrash).toBeGreaterThan(40);
   });
-
-  it("draws nothing when the band is narrower than one diamond", () => expect(motifPath(DIAMONDS, 10, 3).d).toBe(""));
 });
 
-describe("knotted fringe", () => {
-  it("stays inside its strip and is the same every time", () => {
-    for (const at of ["top", "bottom"] as const) {
-      const d = fringePath(343, at);
-      expect(d).toBe(fringePath(343, at));
-      for (const r of rects(d)) {
-        expect(r.x).toBeGreaterThanOrEqual(0);
-        expect(r.x + r.w).toBeLessThanOrEqual(343);
-        expect(r.y).toBeGreaterThanOrEqual(0);
-        expect(r.y + r.h).toBeLessThanOrEqual(FRINGE_HEIGHT);
+describe("stepped diamond", () => {
+  const spec: MotifSpec = { tall: false, tint: 0, centre: "wool", centreSize: 1 };
+
+  it("fits its box, with steps wider than they are tall", () => {
+    for (const m of [spec, { ...spec, tall: true }, { ...spec, centreSize: 0 as const }]) {
+      for (const layer of motifLayers(m)) {
+        for (const r of rects(layer.d)) {
+          expect(r.x).toBeGreaterThanOrEqual(0);
+          expect(r.x + r.w).toBeLessThanOrEqual(MOTIF_W);
+          expect(r.y).toBeGreaterThanOrEqual(0);
+          expect(r.y + r.h).toBeLessThanOrEqual(MOTIF_H);
+        }
+      }
+      const body = rects(motifLayers(m)[0].d);
+      for (let i = 1; i < body.length; i++) {
+        const step = Math.abs(body[i].w - body[i - 1].w) / 2;
+        if (step) expect(step).toBeGreaterThan(body[i].h);
       }
     }
   });
 
-  it("puts the knots against the rug: top fringe hangs up, bottom fringe hangs down", () => {
-    const knots = (at: "top" | "bottom") => rects(fringePath(343, at)).filter((r) => r.w > 1);
-    for (const k of knots("bottom")) expect(k.y).toBeLessThan(FRINGE_HEIGHT / 2);
-    for (const k of knots("top")) expect(k.y).toBeGreaterThan(FRINGE_HEIGHT / 2 - 2);
+  it("is filled with the dye, with a contrasting centre inside it", () => {
+    const [body, centre] = motifLayers(spec);
+    expect(body.paint).toBe("body");
+    expect(centre.paint).toBe("wool");
+    const area = (d: string) => rects(d).reduce((s, r) => s + r.w * r.h, 0);
+    expect(area(centre.d)).toBeLessThan(area(body.d) / 3);
   });
 
-  it("varies thread lengths", () => {
-    const lengths = new Set(rects(fringePath(343, "bottom")).filter((r) => r.w === 1 && r.y > 3).map((r) => r.h));
-    expect(lengths.size).toBeGreaterThan(2);
+  it("the taller motif is one step taller", () => {
+    const h = (m: typeof spec) => rects(motifLayers(m)[0].d).length;
+    expect(h({ ...spec, tall: true })).toBe(h(spec) + 1);
+  });
+});
+
+describe("fringe and guards", () => {
+  it("has a bundle for every slot, each 3 or 4 threads of 14 to 18px", () => {
+    const { fringe } = weave(9);
+    for (const end of [fringe.top, fringe.bottom]) {
+      expect(end).toHaveLength(FRINGE_CELLS * BUNDLES_PER_CELL);
+      for (const b of end) {
+        expect([3, 4]).toContain(b.threads.length);
+        for (const t of b.threads) {
+          expect(t.len).toBeGreaterThanOrEqual(14);
+          expect(t.len).toBeLessThanOrEqual(18);
+        }
+      }
+    }
+  });
+
+  it("threads stay inside the fringe strip", () => {
+    for (const b of weave(3).fringe.bottom) {
+      for (const d of bundleShape(b).threads) {
+        const ys = [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => +m[2]);
+        for (const y of ys) expect(y).toBeLessThanOrEqual(FRINGE_H);
+      }
+    }
+  });
+
+  it("guard abrash is hard-edged blocks of the dye's tints", () => {
+    const css = guardBackground(weave(5).guards.top);
+    expect(css).toMatch(/^linear-gradient\(90deg, /);
+    expect(css).not.toMatch(/#[0-9a-f]|rgba?\(|hsla?\(/i); // palette variables only
+    // Every block has a start and an end, so neighbours meet with hard edges.
+    expect(css.match(/[\d.]+% [\d.]+%/g)).toHaveLength(weave(5).guards.top.length);
   });
 });
