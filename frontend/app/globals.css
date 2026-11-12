@@ -939,8 +939,15 @@ a.entry-no:hover {
   gap: 20px;
   justify-items: center;
 }
-.hero-rug > .kilim {
+.hero-loom {
   width: min(190px, 56vw);
+}
+/* The plain-words caveat under a rug that stands in for the real one. */
+.rug-note {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--slate);
 }
 .hero-tag {
   position: relative;
@@ -966,7 +973,7 @@ a.entry-no:hover {
     justify-items: stretch;
     align-items: start;
   }
-  .hero-rug > .kilim {
+  .hero-loom {
     width: 100%;
   }
   .hero-tag {

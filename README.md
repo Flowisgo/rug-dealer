@@ -61,6 +61,7 @@ A real buyer would pay about $1,500 for the rug. The store's buying price is $60
   - enforces the settlement windows: store buy-out on `[end, end + 7 days)`, investor claim from `end + 7 days`
   - emits an event for every action
 - **Rug certificates** are records inside the contract, each with an id, store, description, price, owner and status. There is no separate Stellar asset or trustline per rug.
+- **Rug pictures** are woven patterns the app generates from each certificate number, so certificates are easy to tell apart. They are not photos of the real rugs: the contract stores only a text description. A real version would photograph each rug at intake and record the photo's fingerprint on the certificate.
 - **USDC** is a test asset with its own Stellar Asset Contract. The weaver's local currency is mocked at a fixed demo rate of 1 USDC ≈ 45 TRY.
 - **The web app** ([`frontend/`](frontend)) does the following:
   - signs with Freighter

@@ -5,6 +5,7 @@ import { MoneyInline } from "@/components/money";
 import { LedgerRows, Party, Section } from "@/components/ui";
 import { useWallet } from "@/components/wallet";
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
+import { RUG_PATTERN_NOTE } from "@/lib/kilim";
 import { formatUsdc, quoteLocally, UNIT } from "@/lib/money";
 
 // The guide's worked example, computed with the same maths as the contract.
@@ -87,7 +88,10 @@ export default function Home() {
         </div>
 
         <figure className="hero-rug" aria-label="Worked example: a 600 USDC loan over 6 months" style={{ margin: 0 }}>
-          <Kilim seed={HERO_SEED} weave />
+          <div className="hero-loom">
+            <Kilim seed={HERO_SEED} weave />
+            <p className="rug-note">{RUG_PATTERN_NOTE}</p>
+          </div>
           <figcaption className="hero-tag">
             <p className="hero-tag-title">A rug a buyer would pay about 1,500 USDC for</p>
             <p className="small muted">The store would buy it for 600 USDC. The weaver borrows that for 6 months.</p>

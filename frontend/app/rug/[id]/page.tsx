@@ -8,6 +8,7 @@ import { MoneyBlock } from "@/components/money";
 import { Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
 import { describe, rugIdOf, type AppEvent } from "@/lib/events";
+import { RUG_PATTERN_NOTE } from "@/lib/kilim";
 import { rugNo } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
 import { useLedger, useNow } from "@/lib/use-ledger";
@@ -89,6 +90,7 @@ export default function RugPage() {
               </KV>
             )}
           </div>
+          <p className="small muted">{RUG_PATTERN_NOTE}</p>
           <div className="btn-row">
             <button
               className="btn btn-quiet"

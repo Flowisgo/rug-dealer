@@ -7,6 +7,9 @@
 // top-bottom like real kilims, then made a little irregular: abrash (the dye
 // drifting between batches, row by row) and the odd motif woven differently.
 
+/** Shown wherever a rug is the main picture, so nobody takes it for the real rug. */
+export const RUG_PATTERN_NOTE = "Pattern made from the certificate number, not a photo of the rug.";
+
 export type Dye = "wool" | "madder" | "indigo" | "walnut" | "saffron";
 export type Family = "medallion" | "banded";
 
