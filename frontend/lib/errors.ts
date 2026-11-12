@@ -1,6 +1,6 @@
 import { CONTRACT_ID, USDC_ID } from "./deployment";
 
-/** Contract error codes 1–24 (docs/contract-interface.md) in plain words. */
+/** Contract error codes 1–25 (docs/contract-interface.md) in plain words. */
 export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> = {
   1: { name: "InvalidConfig", message: "The contract settings are invalid. This is a deployment problem, not something you did." },
   2: { name: "StoreAlreadyRegistered", message: "This store is already approved. Change its limit instead." },
@@ -26,6 +26,7 @@ export const CONTRACT_ERRORS: Record<number, { name: string; message: string }> 
   22: { name: "WeaverIsStore", message: "A store can't be the weaver on a rug certificate. Issue it to the weaver's own account." },
   23: { name: "StoreCannotBorrow", message: "Stores can't borrow against rugs. Only weavers can ask for a loan." },
   24: { name: "InvestorIsParty", message: "You can't lend on a loan you're part of. Another investor has to fund it." },
+  25: { name: "NothingToWithdraw", message: "There's nothing waiting for you to withdraw." },
 };
 
 /** Errors from the USDC token contract (Stellar Asset Contract). */

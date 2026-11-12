@@ -20,6 +20,21 @@ const fromFixture = (name: string): AppEvent => {
 const text = (e: AppEvent) => plain(sentence(e), partyName, (u) => `${formatUsdc(u)} USDC`);
 const META = { id: "x", ledger: 1, at: "2026-11-12T00:00:00Z", txHash: "ab".repeat(32) };
 
+describe("held investor payouts", () => {
+  it("decodes investor_credited and says the loan still closed", () => {
+    const e = decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 7n, amount: 6_450_000_000n }, META);
+    expect(e).toMatchObject({ kind: "investor_credited", investor: ACCOUNTS.investor, loanId: 7n, amount: 6_450_000_000n });
+    expect(text(e)).toBe(
+      "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so the contract is holding it for them to withdraw. The loan is closed.",
+    );
+  });
+  it("decodes credit_withdrawn", () => {
+    const e = decodeNative(["credit_withdrawn", ACCOUNTS.investor], { amount: 6_450_000_000n }, META);
+    expect(e).toMatchObject({ kind: "credit_withdrawn", investor: ACCOUNTS.investor, amount: 6_450_000_000n });
+    expect(text(e)).toBe("Deniz the investor withdrew 645.00 USDC the contract was holding for them.");
+  });
+});
+
 describe("decoding real testnet events", () => {
   it("has a fixture for every event the demo produced", () => {
     expect(Object.keys(FIX).sort()).toEqual(

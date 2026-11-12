@@ -1,10 +1,11 @@
 "use client";
+import { useEffect, useState } from "react";
 import { HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock, MoneyInline, MoneySentence } from "@/components/money";
 import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
-import { addr, u64, type Loan, type Rug } from "@/lib/contract";
+import { addr, getCredit, u64, type Loan, type Rug } from "@/lib/contract";
 import { rugNo, usdcLabel } from "@/lib/money";
 import { investorTotals, lendBlock, loanPhase, LOAN_STATUS_TEXT, monthsText, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
@@ -61,6 +62,8 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
           </>
         )}
       </p>
+
+      <HeldPayout investor={investor} loadedAt={data.loadedAt} />
 
       <Section label="Open requests" count={requests.length}>
         {requests.length === 0 ? (
@@ -127,6 +130,43 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
         </Section>
       )}
     </>
+  );
+}
+
+/** A payout the contract is holding because it couldn't reach the investor's
+ * wallet when the loan closed. Shown only when there is one. */
+function HeldPayout({ investor, loadedAt }: { investor: string; loadedAt: number }) {
+  const [credit, setCredit] = useState<bigint | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getCredit(investor).then(
+      (c) => alive && setCredit(c),
+      () => alive && setCredit(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [investor, loadedAt]);
+  if (!credit || credit <= 0n) return null;
+  return (
+    <div className="notice warn" style={{ marginTop: 24, display: "grid", gap: 12 }}>
+      <p>
+        <strong>
+          <MoneyInline units={credit} /> is waiting for you.
+        </strong>{" "}
+        A loan closed while your wallet couldn't take the payout, so the contract is holding it. Make sure your wallet can hold USDC, then
+        withdraw it.
+      </p>
+      <ActionButton
+        primary
+        label={`Withdraw ${usdcLabel(credit)}`}
+        signer={investor}
+        done="Withdrawn. It's in your wallet now."
+        run={(onStep) =>
+          invoke({ source: investor, method: "withdraw_credit", args: [addr(investor)], label: "Withdraw held payout" }, onStep)
+        }
+      />
+    </div>
   );
 }
 

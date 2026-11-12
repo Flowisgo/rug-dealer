@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   addr,
   getConfig,
+  getCredit,
   getLoan,
   getRug,
   getStore,
@@ -72,6 +73,14 @@ describe("testnet deployment", () => {
     const bought = (await listRugs()).find((r) => r.owner === ACCOUNTS.store && r.store === ACCOUNTS.store && r.status === "Free");
     expect(bought, "the buy-out demo leaves the store holding a free rug").toBeDefined();
     await expect(simulateRead(CONTRACT_ID, "request_loan", [addr(ACCOUNTS.store), u64(bought!.id), u32(1)])).rejects.toMatchObject({ code: 23 });
+  });
+
+  it("holds no payout for the demo investor after normal settlement", async () => {
+    expect(await getCredit(ACCOUNTS.investor)).toBe(0n);
+  });
+
+  it("refuses a withdrawal when nothing is held", async () => {
+    await expect(simulateRead(CONTRACT_ID, "withdraw_credit", [addr(ACCOUNTS.investor)])).rejects.toMatchObject({ code: 25 });
   });
 
   it("reads USDC balances", async () => {

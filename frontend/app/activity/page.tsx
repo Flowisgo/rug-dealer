@@ -10,7 +10,7 @@ import { useLedger } from "@/lib/use-ledger";
 const FILTERS: { key: string; label: string; kinds: AppEvent["kind"][] | null }[] = [
   { key: "all", label: "Everything", kinds: null },
   { key: "rugs", label: "Rugs", kinds: ["rug_minted", "rug_redeemed"] },
-  { key: "loans", label: "Loans", kinds: ["loan_requested", "loan_cancelled", "loan_funded", "loan_repaid"] },
+  { key: "loans", label: "Loans", kinds: ["loan_requested", "loan_cancelled", "loan_funded", "loan_repaid", "investor_credited", "credit_withdrawn"] },
   { key: "late", label: "Buy-outs and claims", kinds: ["store_bought_out", "rug_claimed", "store_frozen"] },
   { key: "stores", label: "Stores", kinds: ["store_registered", "store_limit_set", "store_frozen"] },
 ];

@@ -3,7 +3,7 @@
 Weavers can borrow against a finished rug instead of selling it cheaply. This is a working prototype on Stellar Testnet: a Soroban contract and a web app with one desk for each role.
 
 **Live app:** [rugdealer.vercel.app](https://rugdealer.vercel.app)
-**Contract on Stellar Testnet:** [`CB5KLLH5…KOVR`](https://stellar.expert/explorer/testnet/contract/CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR)
+**Contract on Stellar Testnet:** [`CCX3Z3DJ…4M2J`](https://stellar.expert/explorer/testnet/contract/CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J)
 
 ![The RugDealer landing page with the worked example](frontend/screenshots/landing-1280.jpg)
 
@@ -60,6 +60,7 @@ A real buyer would pay about $1,500 for the rug. The store's buying price is $60
   - records stores, rug certificates and loans
   - moves test USDC
   - enforces the settlement windows: store buy-out on `[end, end + 7 days)`, investor claim from `end + 7 days`
+  - always lets a loan close: if the investor's wallet can't take a payout, the contract holds it for them to withdraw later
   - emits an event for every action
 - **Rug certificates** are records inside the contract, each with an id, store, description, price, owner and status. There is no separate Stellar asset or trustline per rug.
 - **Rug pictures** are woven patterns the app generates from each certificate number, so certificates are easy to tell apart. They are not photos of the real rugs: the contract stores only a text description. A real version would photograph each rug at intake and record the photo's fingerprint on the certificate.
@@ -101,7 +102,7 @@ In this demo deployment, **1 loan month is 60 seconds** and the store's buy-out 
 | Item | Value |
 |---|---|
 | Network | Stellar Testnet |
-| RugDealer contract | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
+| RugDealer contract | `CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J` |
 | Test USDC (contract) | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | Test USDC (asset) | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 

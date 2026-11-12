@@ -109,8 +109,9 @@ describe("countdown clock", () => {
 });
 
 describe("contract errors", () => {
-  it("maps every code 1-24 to a plain message", () => {
-    for (let c = 1; c <= 24; c++) expect(CONTRACT_ERRORS[c]?.message.length).toBeGreaterThan(10);
+  it("maps every code 1-25 to a plain message", () => {
+    for (let c = 1; c <= 25; c++) expect(CONTRACT_ERRORS[c]?.message.length).toBeGreaterThan(10);
+    expect(CONTRACT_ERRORS[25].name).toBe("NothingToWithdraw");
   });
   it("names the role-check errors as the contract does", () => {
     expect([22, 23, 24].map((c) => CONTRACT_ERRORS[c].name)).toEqual(["WeaverIsStore", "StoreCannotBorrow", "InvestorIsParty"]);

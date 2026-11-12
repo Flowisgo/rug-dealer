@@ -31,6 +31,8 @@ export type AppEvent = EventMeta &
     | { kind: "store_bought_out"; loanId: bigint; rugId: bigint; store: string; investor: string; principal: bigint; interest: bigint }
     | { kind: "rug_claimed"; loanId: bigint; rugId: bigint; investor: string; store: string; interest: bigint }
     | { kind: "rug_redeemed"; rugId: bigint; store: string; holder: string }
+    | { kind: "investor_credited"; investor: string; loanId: bigint; amount: bigint }
+    | { kind: "credit_withdrawn"; investor: string; amount: bigint }
     | { kind: "unknown"; name: string }
   );
 
@@ -77,6 +79,10 @@ export function decodeNative(topics: unknown[], data: unknown, meta: EventMeta):
       return { ...meta, kind: name, loanId: b(t1), rugId: b(d.rug_id), investor: s(d.investor), store: s(d.store), interest: b(d.interest) };
     case "rug_redeemed":
       return { ...meta, kind: name, rugId: b(t1), store: s(d.store), holder: s(d.holder) };
+    case "investor_credited":
+      return { ...meta, kind: name, investor: s(t1), loanId: b(d.loan_id), amount: b(d.amount) };
+    case "credit_withdrawn":
+      return { ...meta, kind: name, investor: s(t1), amount: b(d.amount) };
     default:
       return { ...meta, kind: "unknown", name };
   }
@@ -124,6 +130,15 @@ export function describe(e: AppEvent): Part[] {
       return e.holder === e.store
         ? [shop(e.store), " closed the certificate for rug ", rug(e.rugId), ", which it had bought."]
         : [who(e.holder), " collected rug ", rug(e.rugId), " from ", shop(e.store), "."];
+    case "investor_credited":
+      return [
+        who(e.investor),
+        "'s wallet couldn't take the payout of ",
+        amt(e.amount),
+        ", so the contract is holding it for them to withdraw. The loan is closed.",
+      ];
+    case "credit_withdrawn":
+      return [who(e.investor), " withdrew ", amt(e.amount), " the contract was holding for them."];
     default:
       return [`Unrecognised event "${e.name}".`];
   }

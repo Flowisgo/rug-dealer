@@ -166,6 +166,8 @@ export const getConfig = async () => toConfig((await read("get_config")) as Reco
 export const getStore = async (store: string) => toStore((await read("get_store", [addr(store)])) as Record<string, unknown>);
 export const getRug = async (id: bigint) => toRug((await read("get_rug", [u64(id)])) as Record<string, unknown>);
 export const getLoan = async (id: bigint) => toLoan((await read("get_loan", [u64(id)])) as Record<string, unknown>);
+/** USDC the contract holds for an investor whose payout couldn't be delivered. 0 if none. */
+export const getCredit = async (address: string) => BigInt((await read("get_credit", [addr(address)])) as bigint);
 export const nextRugId = async () => BigInt((await read("next_rug_id")) as bigint);
 export const nextLoanId = async () => BigInt((await read("next_loan_id")) as bigint);
 export const quote = async (principal: bigint, months: number) =>
