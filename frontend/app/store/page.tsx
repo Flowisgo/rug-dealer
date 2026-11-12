@@ -219,7 +219,7 @@ function StoreRug({ rug, store, loans }: { rug: Rug; store: string; loans: Loan[
     <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
       <div className="ticket-meta">
         <KV k="Holder">
-          <Party address={rug.owner} />
+          <Party address={rug.owner} store={rug.owner === rug.store} />
         </KV>
         <KV k="Price">
           <MoneyBlock units={rug.price} />

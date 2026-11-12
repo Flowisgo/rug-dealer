@@ -75,10 +75,10 @@ export default function RugPage() {
         <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={tag.tone}>{tag.text}</Tag>}>
           <div className="ticket-meta">
             <KV k="Store">
-              <Party address={rug.store} link />
+              <Party address={rug.store} link store />
             </KV>
             <KV k="Holder">
-              <Party address={rug.owner} link />
+              <Party address={rug.owner} link store={rug.owner === rug.store} />
             </KV>
             <KV k="Store's price">
               <MoneyBlock units={rug.price} />

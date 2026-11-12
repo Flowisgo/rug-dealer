@@ -3,6 +3,7 @@
 import { scValToNative, type xdr } from "@stellar/stellar-sdk";
 import { CONTRACT_ID, DEPLOY_LEDGER } from "./deployment";
 import { server, variant } from "./contract";
+import type { PartyRole } from "./names";
 
 export type EventMeta = { id: string; ledger: number; at: string; txHash: string };
 
@@ -87,24 +88,25 @@ export function decodeEvent(topic: xdr.ScVal[], value: xdr.ScVal, meta: EventMet
 }
 
 /** Pieces of a sentence: plain text, an amount, a party, or a rug number. */
-export type Part = string | { amount: bigint } | { party: string } | { rug: bigint };
+export type Part = string | { amount: bigint } | { party: string; role?: PartyRole } | { rug: bigint };
 
 /** One plain sentence per event. */
 export function describe(e: AppEvent): Part[] {
   const amt = (amount: bigint) => ({ amount });
   const who = (party: string) => ({ party });
+  const shop = (party: string) => ({ party, role: "store" as const });
   const rug = (id: bigint) => ({ rug: id });
   switch (e.kind) {
     case "store_registered":
-      return ["The platform approved ", who(e.store), " as a store, with a limit of ", amt(e.limit), "."];
+      return ["The platform approved ", shop(e.store), " as a store, with a limit of ", amt(e.limit), "."];
     case "store_limit_set":
-      return ["The platform set the limit for ", who(e.store), " to ", amt(e.limit), "."];
+      return ["The platform set the limit for ", shop(e.store), " to ", amt(e.limit), "."];
     case "store_frozen":
       return e.reason === "MissedBuyout"
-        ? [who(e.store), " was frozen for missing a buy-out. It can no longer issue rug certificates."]
-        : ["The platform froze ", who(e.store), ". It can no longer issue rug certificates."];
+        ? [shop(e.store), " was frozen for missing a buy-out. It can no longer issue rug certificates."]
+        : ["The platform froze ", shop(e.store), ". It can no longer issue rug certificates."];
     case "rug_minted":
-      return [who(e.store), " took in rug ", rug(e.rugId), " from ", who(e.weaver), " and priced it at ", amt(e.price), "."];
+      return [shop(e.store), " took in rug ", rug(e.rugId), " from ", who(e.weaver), " and priced it at ", amt(e.price), "."];
     case "loan_requested":
       return [who(e.weaver), " asked to borrow ", amt(e.principal), " against rug ", rug(e.rugId), ` for ${e.months} ${e.months === 1 ? "month" : "months"}.`];
     case "loan_cancelled":
@@ -114,18 +116,21 @@ export function describe(e: AppEvent): Part[] {
     case "loan_repaid":
       return [who(e.weaver), " repaid ", amt(e.principal), " on rug ", rug(e.rugId), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
     case "store_bought_out":
-      return [who(e.store), " bought rug ", rug(e.rugId), " for ", amt(e.principal), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
+      return [shop(e.store), " bought rug ", rug(e.rugId), " for ", amt(e.principal), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
     case "rug_claimed":
-      return [who(e.investor), " took rug ", rug(e.rugId), " and ", amt(e.interest), " interest after ", who(e.store), " missed the buy-out."];
+      return [who(e.investor), " took rug ", rug(e.rugId), " and ", amt(e.interest), " interest after ", shop(e.store), " missed the buy-out."];
     case "rug_redeemed":
-      return [who(e.holder), " collected rug ", rug(e.rugId), " from ", who(e.store), "."];
+      // A store redeeming a rug it holds itself can only follow its own buy-out.
+      return e.holder === e.store
+        ? [shop(e.store), " closed the certificate for rug ", rug(e.rugId), ", which it had bought."]
+        : [who(e.holder), " collected rug ", rug(e.rugId), " from ", shop(e.store), "."];
     default:
       return [`Unrecognised event "${e.name}".`];
   }
 }
 
 /** Plain text of a sentence, for tests and titles. */
-export function plain(parts: Part[], name: (a: string) => string, money: (u: bigint) => string): string {
+export function plain(parts: Part[], name: (a: string, role?: PartyRole) => string, money: (u: bigint) => string): string {
   return parts
     .map((p) =>
       typeof p === "string"
@@ -133,7 +138,7 @@ export function plain(parts: Part[], name: (a: string) => string, money: (u: big
         : "amount" in p
           ? money(p.amount)
           : "party" in p
-            ? name(p.party)
+            ? name(p.party, p.role)
             : `No. ${p.rug.toString().padStart(4, "0")}`,
     )
     .join("");

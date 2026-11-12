@@ -100,7 +100,7 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
                 <RugTicket key={rug.id.toString()} id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
                   <div className="ticket-meta">
                     <KV k="Store">
-                      <Party address={rug.store} />
+                      <Party address={rug.store} store />
                     </KV>
                     <KV k="Price">
                       <MoneyBlock units={rug.price} />
@@ -135,7 +135,7 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
     <RugTicket id={rug.id} name={rug.description} tag={<Tag tone={label.tone}>{label.text}</Tag>}>
       <div className="ticket-meta">
         <KV k="Store">
-          <Party address={rug.store} />
+          <Party address={rug.store} store />
         </KV>
         <KV k="Store's price">
           <MoneyBlock units={rug.price} />

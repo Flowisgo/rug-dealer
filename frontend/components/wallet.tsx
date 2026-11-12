@@ -113,7 +113,6 @@ export function useWallet(): Wallet {
   return w;
 }
 
-export const nameOf = (a: string) => DEMO_NAMES[a]?.name ?? short(a);
 
 export function WalletChip() {
   const w = useWallet();

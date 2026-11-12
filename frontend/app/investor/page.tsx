@@ -97,7 +97,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
               <RugTicket key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="plain">Yours to collect</Tag>}>
                 <div className="ticket-meta">
                   <KV k="At">
-                    <Party address={r.store} />
+                    <Party address={r.store} store />
                   </KV>
                   <KV k="Store's price">
                     <MoneyBlock units={r.price} />
@@ -118,7 +118,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
               <RugTicket key={r.id.toString()} id={r.id} name={r.description} tag={<Tag tone="done">Collected</Tag>}>
                 <div className="ticket-meta">
                   <KV k="From">
-                    <Party address={r.store} />
+                    <Party address={r.store} store />
                   </KV>
                   <KV k="Store's price">
                     <MoneyBlock units={r.price} />
@@ -141,7 +141,7 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
     <RugTicket id={loan.rug_id} name={rug?.description ?? rugNo(loan.rug_id)} tag={<Tag tone="waiting">Waiting for an investor</Tag>}>
       <div className="ticket-meta">
         <KV k="Store">
-          <Party address={loan.store} />
+          <Party address={loan.store} store />
         </KV>
         <KV k="Weaver">
           <Party address={loan.weaver} />
@@ -193,7 +193,7 @@ function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; w
           <MoneyBlock units={loan.interest} />
         </KV>
         <KV k="Store">
-          <Party address={loan.store} />
+          <Party address={loan.store} store />
         </KV>
         {phase === "running" && (
           <KV k="Due in">

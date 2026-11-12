@@ -58,9 +58,17 @@ export function ErrorBox({ message, retry }: { message: string; retry?: () => vo
 }
 
 /** A person or business, by friendly demo name when we know them. */
-export function Party({ address, link = false }: { address: string; link?: boolean }) {
+export function Party({ address, link = false, store = false }: { address: string; link?: boolean; store?: boolean }) {
   const known = DEMO_NAMES[address];
-  const label = known ? known.name : <span className="mono">{short(address)}</span>;
+  const label = known ? (
+    known.name
+  ) : store ? (
+    <>
+      Store <span className="mono">{short(address)}</span>
+    </>
+  ) : (
+    <span className="mono">{short(address)}</span>
+  );
   return link ? (
     <a href={accountUrl(address)} target="_blank" rel="noreferrer" title={address}>
       {label}

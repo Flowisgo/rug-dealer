@@ -16,7 +16,7 @@ export function Sentence({ parts }: { parts: Part[] }) {
           <MoneyInline key={i} units={p.amount} />
         ) : "party" in p ? (
           <span key={i} className="party">
-            <Party address={p.party} />
+            <Party address={p.party} store={p.role === "store"} />
           </span>
         ) : (
           <Link key={i} className="rugref" href={`/rug/${p.rug}`}>

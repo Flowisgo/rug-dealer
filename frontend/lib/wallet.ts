@@ -10,6 +10,7 @@ import {
 } from "@stellar/freighter-api";
 import { NETWORK_PASSPHRASE } from "./deployment";
 import { AppError } from "./errors";
+import { short } from "./names";
 
 const fail = (message: string) => new AppError(message, undefined, "wallet");
 
@@ -75,4 +76,4 @@ export async function signAuth(preimageXdr: string, address: string): Promise<{ 
   return { signature: fromBase64(r.signedAuthEntry), publicKey: r.signerAddress || address };
 }
 
-export const short = (a: string) => (a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a);
+export { short } from "./names";

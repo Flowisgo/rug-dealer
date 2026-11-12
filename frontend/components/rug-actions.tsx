@@ -154,7 +154,7 @@ export function HandoverPanel({ rug, holder }: { rug: Rug; holder: string }) {
   return (
     <div className="notice">
       <p style={{ marginBottom: 8 }}>
-        <strong>Your part is signed.</strong> Give this link to <Party address={rug.store} />. They open it on their store desk, hand you
+        <strong>Your part is signed.</strong> Give this link to <Party address={rug.store} store />. They open it on their store desk, hand you
         the rug and sign. It works for about a day.
       </p>
       <div className="btn-row" style={{ marginBottom: 8 }}>
@@ -183,7 +183,7 @@ export function HandedOver({ rugId, holder, hash, self = false }: { rugId: bigin
       <p>
         {self ? (
           <>
-            <Party address={holder} /> held it after the buy-out; it's off the books now.
+            <Party address={holder} store /> held it after the buy-out; it's off the books now.
           </>
         ) : (
           <>
@@ -207,7 +207,7 @@ function AlreadyHandedOver({ rug, events }: { rug: Rug; events: AppEvent[] }) {
   return (
     <div className="notice quiet" role="status">
       <p>
-        Rug <span className="mono">{rugNo(rug.id)}</span> was already handed over to <Party address={ev?.holder ?? rug.owner} />
+        Rug <span className="mono">{rugNo(rug.id)}</span> was already handed over to <Party address={ev?.holder ?? rug.owner} store={(ev?.holder ?? rug.owner) === rug.store} />
         {ev ? (
           <>
             {" "}
@@ -303,7 +303,7 @@ export function CoSignPanel({
             <>
               {w.address && w.address !== parsed.store && (
                 <p className="small muted">
-                  This needs <Party address={parsed.store} />. Switch accounts in Freighter.
+                  This needs <Party address={parsed.store} store />. Switch accounts in Freighter.
                 </p>
               )}
               <ActionButton

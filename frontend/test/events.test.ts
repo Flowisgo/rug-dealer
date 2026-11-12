@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { xdr } from "@stellar/stellar-sdk";
 import { ACCOUNTS } from "../lib/deployment";
 import { decodeEvent, decodeNative, describe as sentence, plain, type AppEvent } from "../lib/events";
-import { DEMO_NAMES } from "../lib/deployment";
 import { formatUsdc } from "../lib/money";
+import { partyName } from "../lib/names";
 import fixtures from "./testnet-events.json";
 
 type Fixture = { topic: string[]; value: string; ledger: number; at: string; txHash: string; id: string };
@@ -17,8 +17,7 @@ const fromFixture = (name: string): AppEvent => {
     { id: f.id, ledger: f.ledger, at: f.at, txHash: f.txHash },
   );
 };
-const name = (a: string) => DEMO_NAMES[a]?.name ?? a.slice(0, 4);
-const text = (e: AppEvent) => plain(sentence(e), name, (u) => `${formatUsdc(u)} USDC`);
+const text = (e: AppEvent) => plain(sentence(e), partyName, (u) => `${formatUsdc(u)} USDC`);
 const META = { id: "x", ledger: 1, at: "2026-11-12T00:00:00Z", txHash: "ab".repeat(32) };
 
 describe("decoding real testnet events", () => {
@@ -102,9 +101,29 @@ describe("events the demo hasn't produced yet", () => {
     expect(e).toMatchObject({ kind: "loan_cancelled", loanId: 4n, rugId: 4n });
     expect(text(e)).toBe("Ayşe the weaver cancelled the loan request on rug No. 0004.");
   });
-  it("rug_redeemed", () => {
-    const e = decodeNative(["rug_redeemed", 1n], { store: ACCOUNTS.store, holder: ACCOUNTS.weaver }, META);
-    expect(text(e)).toBe("Ayşe the weaver collected rug No. 0001 from Kaya Rug House.");
+  it("rug_redeemed by the weaver: collected from the store", () => {
+    const e = decodeNative(["rug_redeemed", 4n], { store: ACCOUNTS.store, holder: ACCOUNTS.weaver }, META);
+    expect(text(e)).toBe("Ayşe the weaver collected rug No. 0004 from Kaya Rug House.");
+  });
+  it("rug_redeemed by the store itself: closed the certificate on a rug it bought", () => {
+    const e = decodeNative(["rug_redeemed", 7n], { store: ACCOUNTS.store, holder: ACCOUNTS.store }, META);
+    expect(text(e)).toBe("Kaya Rug House closed the certificate for rug No. 0007, which it had bought.");
+  });
+  it("names stores outside the deployment file as Store G…", () => {
+    const other = "GAF3ZQXAQ6BW2J3C3TPA2K6IUCSJAE6BRWPTNRMV3H4X7R2IMJ5U6HYP";
+    expect(text(decodeNative(["rug_redeemed", 7n], { store: other, holder: other }, META))).toBe(
+      "Store GAF3…6HYP closed the certificate for rug No. 0007, which it had bought.",
+    );
+    expect(text(decodeNative(["rug_redeemed", 4n], { store: other, holder: ACCOUNTS.weaver }, META))).toBe(
+      "Ayşe the weaver collected rug No. 0004 from Store GAF3…6HYP.",
+    );
+    expect(text(decodeNative(["store_registered", other], { limit: 10_000_000_000n }, META))).toBe(
+      "The platform approved Store GAF3…6HYP as a store, with a limit of 1,000.00 USDC.",
+    );
+    // A weaver or investor outside the deployment stays a bare short address.
+    expect(text(decodeNative(["loan_cancelled", 4n], { rug_id: 4n, weaver: other }, META))).toBe(
+      "GAF3…6HYP cancelled the loan request on rug No. 0004.",
+    );
   });
   it("months are singular for one", () => {
     const e = decodeNative(

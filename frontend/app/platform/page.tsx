@@ -79,7 +79,7 @@ function StoreCard({ store, admin, reason }: { store: Store; admin: string; reas
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
         <div>
           <p className="panel-title" style={{ marginBottom: 2 }}>
-            <Party address={store.address} />
+            <Party address={store.address} store />
           </p>
           <p className="addr-full muted">{store.address}</p>
         </div>
@@ -130,7 +130,7 @@ function StoreCard({ store, admin, reason }: { store: Store; admin: string; reas
                 title: "Freeze this store for good?",
                 body: (
                   <p>
-                    <Party address={store.address} /> will no longer be able to write rug certificates, and investors will see the flag.
+                    <Party address={store.address} store /> will no longer be able to write rug certificates, and investors will see the flag.
                     There is no unfreeze.
                   </p>
                 ),
