@@ -460,25 +460,22 @@ textarea.input {
 
 /* ---------- rug cards ---------- */
 
-/* A flat-woven rug seen from above. The border is a twill in one dye striped
-   with wool; the dye follows the status tag (data-tone). Fringe hangs off the
-   short ends. Layout follows the card's own width (container query), so a rug
-   in a narrow column looks like one on a phone: fringe top and bottom, rug
-   number and status above the name. From 600px wide: fringe left and right,
-   number, name and status on one line. */
+/* A flat-woven rug seen from above. Long sides are a crisp edge: 1px walnut
+   with 2px of dye inside. The short ends (top and bottom, at every width) carry
+   an end band of stepped diamonds and knotted fringe, drawn by
+   components/rug.tsx. The dye follows the status tag (data-tone); the field
+   stays paper. Layout of the head follows the card's own width. */
 
 .card-list {
   display: grid;
   gap: 16px;
 }
 .card-list:has(> .rug) {
-  gap: 20px;
+  gap: 24px;
 }
 
 .rug {
   --dye: var(--walnut-soft);
-  --weave: 6px; /* twill between the two dye lines */
-  --fringe: 9px;
   container: rug / inline-size;
   min-width: 0;
 }
@@ -488,54 +485,39 @@ textarea.input {
 .rug[data-tone="late"] {
   --dye: var(--madder);
 }
-/* Collected or settled: washed-out dye, the same walnut-soft let down with wool. */
+/* Collected or settled: walnut-soft let down with wool. */
 .rug[data-tone="done"] {
   --dye: color-mix(in srgb, var(--walnut-soft) 45%, var(--wool));
 }
 
-.rug-weave {
-  position: relative;
-  margin: var(--fringe) 0;
-  border: 1px solid var(--dye);
-  border-radius: var(--radius);
-  padding: var(--weave);
-  background: repeating-linear-gradient(45deg, var(--dye) 0 2px, var(--wool) 2px 5px);
+.rug-fringe {
+  height: 14px;
+  margin: 0 3px;
+  color: var(--walnut-soft);
+  line-height: 0;
 }
-
-/* Fringe: warp threads in bundles of three. Pseudo-elements, so screen
-   readers skip them. */
-.rug-weave::before,
-.rug-weave::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  height: var(--fringe);
-  background: repeating-linear-gradient(
-    90deg,
-    var(--walnut-soft) 0 1px,
-    transparent 1px 3px,
-    var(--walnut-soft) 3px 4px,
-    transparent 4px 6px,
-    var(--walnut-soft) 6px 7px,
-    transparent 7px 12px
-  );
-}
-.rug-weave::before {
-  bottom: calc(100% + 1px);
-}
-.rug-weave::after {
-  top: calc(100% + 1px);
-}
-.rug[data-tone="done"] .rug-weave::before,
-.rug[data-tone="done"] .rug-weave::after {
+.rug[data-tone="done"] .rug-fringe {
   opacity: 0.55;
 }
-
+.rug-cloth {
+  border: 1px solid var(--walnut);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.rug-band {
+  height: 20px;
+  color: var(--dye);
+  line-height: 0;
+}
+.rug-band svg,
+.rug-fringe svg {
+  display: block;
+}
 .rug-field {
   background: var(--paper);
-  border: 1px solid var(--dye);
-  padding: 0 16px 16px;
+  border-left: 2px solid var(--dye);
+  border-right: 2px solid var(--dye);
+  padding: 0 16px 18px;
   display: grid;
   gap: 14px;
   min-width: 0;
@@ -551,19 +533,14 @@ textarea.input {
   gap: 12px 14px;
 }
 
-/* The rug number on a cloth label, sewn on: it hangs from the top border
-   into the field. */
+/* The rug number on a cloth label, sewn to the inner guard of the top band. */
 .rug-label {
   grid-area: label;
-  /* Up over the field line, the twill and the outer line. */
-  margin-top: calc(-1 * (var(--weave) + 2px));
   display: inline-flex;
   align-items: center;
-  min-height: 46px;
-  padding: 4px 12px 0;
-  font-family: var(--mono);
-  font-size: 1rem;
-  font-weight: 500;
+  min-height: 44px;
+  padding: 2px 12px 0;
+  font: 500 1rem var(--mono);
   letter-spacing: 0.02em;
   color: var(--walnut);
   text-decoration: none;
@@ -577,7 +554,7 @@ textarea.input {
     calc(100% - 10px) 1px,
     calc(100% - 10px) 1px;
   background-position:
-    5px 4px,
+    5px 3px,
     5px calc(100% - 4px);
   background-repeat: no-repeat;
   border: 1px solid var(--walnut);
@@ -592,7 +569,7 @@ a.rug-label:hover {
   grid-area: status;
   justify-self: end;
   align-self: center;
-  margin-top: 4px;
+  margin-top: 6px;
   min-width: 0;
   max-width: 100%;
 }
@@ -614,33 +591,6 @@ a.rug-label:hover {
 }
 
 @container rug (min-width: 600px) {
-  .rug-weave {
-    margin: 0 var(--fringe);
-  }
-  .rug-weave::before,
-  .rug-weave::after {
-    top: 3px;
-    bottom: 3px;
-    left: auto;
-    right: auto;
-    width: var(--fringe);
-    height: auto;
-    background: repeating-linear-gradient(
-      180deg,
-      var(--walnut-soft) 0 1px,
-      transparent 1px 3px,
-      var(--walnut-soft) 3px 4px,
-      transparent 4px 6px,
-      var(--walnut-soft) 6px 7px,
-      transparent 7px 12px
-    );
-  }
-  .rug-weave::before {
-    right: calc(100% + 1px);
-  }
-  .rug-weave::after {
-    left: calc(100% + 1px);
-  }
   .rug-field {
     padding: 0 22px 20px;
   }
@@ -654,7 +604,7 @@ a.rug-label:hover {
   }
   .rug-name {
     align-self: center;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .rug-status {
     align-self: start;

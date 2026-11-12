@@ -9,6 +9,7 @@ import { STEP_TEXT, type TxResult, type TxStep } from "@/lib/tx";
 import { refreshLedger, useNow } from "@/lib/use-ledger";
 import { short } from "@/lib/wallet";
 import { MoneyBlock } from "./money";
+import { RugCloth } from "./rug";
 import { useWallet } from "./wallet";
 
 export function Section({ label, count, children, id }: { label: string; count?: number; children: ReactNode; id?: string }) {
@@ -115,8 +116,9 @@ export function toneOf(tag: ReactNode): Tone {
   return isValidElement<{ tone: Tone }>(tag) && tag.type === Tag ? tag.props.tone : "plain";
 }
 
-/** A rug seen from above: woven border dyed by status, fringe on the short
- * ends, and the rug number on a cloth label sewn to the border. */
+/** A rug seen from above: a plain field with crisp long sides, end bands of
+ * stepped diamonds dyed by status, knotted fringe, and the rug number on a
+ * cloth label sewn to the top band. */
 export function RugCard({
   id,
   name,
@@ -130,8 +132,8 @@ export function RugCard({
 }) {
   return (
     <article className="rug" data-tone={toneOf(tag)}>
-      <div className="rug-weave">
-        <div className="rug-field">
+      <RugCloth
+        head={
           <div className="rug-head">
             <Link className="rug-label" href={`/rug/${id}`} title="Open this rug's history">
               {rugNo(id)}
@@ -139,9 +141,10 @@ export function RugCard({
             <h3 className="rug-name">{name}</h3>
             {tag && <div className="rug-status">{tag}</div>}
           </div>
-          {children}
-        </div>
-      </div>
+        }
+      >
+        {children}
+      </RugCloth>
     </article>
   );
 }

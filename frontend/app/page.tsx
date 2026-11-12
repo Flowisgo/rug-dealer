@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LedgerRows, Party, Section, Tag } from "@/components/ui";
 import { useWallet } from "@/components/wallet";
 import { MoneyInline } from "@/components/money";
+import { RugCloth } from "@/components/rug";
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
 import { quoteLocally, UNIT } from "@/lib/money";
 
@@ -81,8 +82,8 @@ export default function Home() {
         </div>
 
         <article className="rug" data-tone="plain" aria-label="Worked example">
-          <div className="rug-weave">
-            <div className="rug-field">
+          <RugCloth
+            head={
               <div className="rug-head">
                 <span className="rug-label">No. 0000</span>
                 <h2 className="rug-name">A rug a buyer would pay about 1,500 USDC for</h2>
@@ -90,22 +91,23 @@ export default function Home() {
                   <Tag tone="plain">Worked example</Tag>
                 </div>
               </div>
-              <p className="small muted">The store's buying price is 600 USDC. The weaver borrows it for 6 months.</p>
-              <LedgerRows
-                rows={[
-                  { label: "Investor lends", units: EXAMPLE.principal },
-                  { label: "Interest held for the investor", units: EXAMPLE.interest },
-                  { label: "Platform fee, once", units: EXAMPLE.platform_fee },
-                  { label: "Store fee for holding the rug", units: EXAMPLE.store_fee },
-                  { label: "Weaver receives today", units: EXAMPLE.weaver_payout, total: true },
-                ]}
-              />
-              <p className="small">
-                The investor gets back <MoneyInline units={EXAMPLE.investor_payout} />, whether the weaver repays or the store buys the
-                rug.
-              </p>
-            </div>
-          </div>
+            }
+          >
+            <p className="small muted">The store's buying price is 600 USDC. The weaver borrows it for 6 months.</p>
+            <LedgerRows
+              rows={[
+                { label: "Investor lends", units: EXAMPLE.principal },
+                { label: "Interest held for the investor", units: EXAMPLE.interest },
+                { label: "Platform fee, once", units: EXAMPLE.platform_fee },
+                { label: "Store fee for holding the rug", units: EXAMPLE.store_fee },
+                { label: "Weaver receives today", units: EXAMPLE.weaver_payout, total: true },
+              ]}
+            />
+            <p className="small">
+              The investor gets back <MoneyInline units={EXAMPLE.investor_payout} />, whether the weaver repays or the store buys the
+              rug.
+            </p>
+          </RugCloth>
         </article>
       </div>
 
