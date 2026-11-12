@@ -1,3 +1,4 @@
+import { StrKey, type xdr } from "@stellar/stellar-sdk";
 import { CONTRACT_ID, USDC_ID } from "./deployment";
 
 /** Contract error codes 1–25 (docs/contract-interface.md) in plain words. */
@@ -52,17 +53,29 @@ export class AppError extends Error {
 const ERROR_RE = /contract:(C[A-Z2-7]{55}),\s*topics:\[error,\s*Error\(Contract,\s*#(\d+)\)\]/g;
 
 /** Turn a simulation or transaction error string into a plain message. */
-export function explainError(raw: string): AppError {
+export function explainError(raw: string, events: xdr.DiagnosticEvent[] = [], directContract?: string): AppError {
+  // RPC returns diagnostics separately from the headline HostError. Preserve
+  // the failing token's origin instead of interpreting its code as ours.
+  for (const diagnostic of events) {
+    const event = diagnostic.event;
+    if (!event.contractId) continue;
+    for (const topic of event.body.value.topics) {
+      if (topic.type === "scvError" && topic.value.type === "sceContract")
+        raw += `\ncontract:${StrKey.encodeContract(event.contractId.toXdrObject())}, topics:[error, Error(Contract, #${topic.value.value})]`;
+    }
+  }
   const hits = [...raw.matchAll(ERROR_RE)].map((m) => ({ contract: m[1], code: Number(m[2]) }));
   const usdc = hits.find((h) => h.contract === USDC_ID);
   if (usdc && USDC_ERRORS[usdc.code]) return new AppError(USDC_ERRORS[usdc.code], usdc.code, "usdc");
   const ours = hits.find((h) => h.contract === CONTRACT_ID);
   if (ours && CONTRACT_ERRORS[ours.code]) return new AppError(CONTRACT_ERRORS[ours.code].message, ours.code, "rugdealer");
-  // Without diagnostic events, the bare code is ours.
+  // Only a known direct call can attribute a bare code. Write calls can
+  // propagate errors from nested contracts, so never assume they are ours.
   const bare = /Error\(Contract,\s*#(\d+)\)/.exec(raw);
-  if (!hits.length && bare && CONTRACT_ERRORS[Number(bare[1])]) {
+  if (!hits.length && bare && directContract) {
     const code = Number(bare[1]);
-    return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
+    if (directContract === USDC_ID && USDC_ERRORS[code]) return new AppError(USDC_ERRORS[code], code, "usdc");
+    if (directContract === CONTRACT_ID && CONTRACT_ERRORS[code]) return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
   }
   if (/Error\(Auth,/.test(raw))
     return new AppError("This needs a signature from a different account. Switch accounts in Varial.", undefined, "auth");

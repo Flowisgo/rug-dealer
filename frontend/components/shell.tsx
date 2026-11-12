@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { ACCOUNTS, contractUrl, txUrl } from "@/lib/deployment";
-import { resumePending, type Pending } from "@/lib/tx";
+import { resumePendings, type Pending } from "@/lib/tx";
 import { refreshLedger } from "@/lib/use-ledger";
 import { StrKey } from "@stellar/stellar-sdk";
 import { Kilim } from "./kilim";
@@ -23,7 +23,7 @@ export function Header() {
   return (
     <>
       <p className="testnet-strip">
-        <strong>Stellar Testnet demo.</strong> A loan month lasts one minute here, and lira amounts use an approximate rate.
+        <strong>Stellar Testnet demo.</strong> A loan month and the buy-out window each last 60 seconds here. Lira amounts use an approximate rate.
       </p>
       <header className="site-header">
         <Link href="/" className="wordmark">
@@ -58,32 +58,42 @@ export function Footer() {
 
 /** If the page was reloaded mid-transaction, say what became of it. */
 function PendingNotice() {
-  const [p, setP] = useState<{ pending: Pending; status: string } | null>(null);
+  const [records, setRecords] = useState<Record<string, { pending: Pending; status: string }>>({});
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    resumePending()
-      .then((r) => {
-        setP(r);
-        if (r?.status === "SUCCESS") void refreshLedger();
-      })
-      .catch(() => {});
+    let alive = true;
+    let checking = false;
+    const check = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const results = await resumePendings();
+        if (!alive) return;
+        setError(null);
+        setRecords((previous) => {
+          const next = { ...previous };
+          for (const r of results) if (r) next[r.pending.hash] = r;
+          return next;
+        });
+        if (results.some((r) => r?.status === "SUCCESS")) void refreshLedger();
+      } catch {
+        if (alive) setError("Couldn't check pending transactions. Their hashes are saved; retrying automatically.");
+      } finally { checking = false; }
+    };
+    void check();
+    const timer = setInterval(check, 4000);
+    window.addEventListener("storage", check);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener("storage", check); };
   }, []);
-  if (!p) return null;
-  const text =
-    p.status === "SUCCESS"
-      ? "went through."
-      : p.status === "FAILED"
-        ? "failed. Nothing changed; you can try again."
-        : p.status === "EXPIRED"
-          ? "never reached the network, so nothing changed. You can try again."
-          : "is still waiting for the network. Refresh in a minute.";
   return (
     <div style={{ maxWidth: "var(--max)", margin: "12px auto 0", padding: "0 var(--gutter)" }}>
-      <div className={p.status === "FAILED" || p.status === "EXPIRED" ? "notice warn" : "notice"} role="status">
-        Your last action ({p.pending.label}) {text}{" "}
-        <a href={txUrl(p.pending.hash)} target="_blank" rel="noreferrer">
-          Check it
-        </a>
-      </div>
+      {error && <p className="notice warn">{error}</p>}
+      {Object.values(records).map((p) => <div key={p.pending.hash} className="notice" role="status">
+        Your action ({p.pending.label}) {p.status === "SUCCESS" ? "went through." : p.status === "FAILED"
+          ? "failed. Nothing changed; you can try again." : p.status === "EXPIRED"
+          ? "expired without confirmation. Check the transaction before retrying." : "is still waiting for the network. Checking automatically."}{" "}
+        <a href={txUrl(p.pending.hash)} target="_blank" rel="noreferrer">Check it</a>
+      </div>)}
     </div>
   );
 }
@@ -152,10 +162,9 @@ export function NoViewer({ role, what }: { role: Role; what: string }) {
 
 /** Banner for the read-only ?as= view. */
 export function LookingAs({ address }: { address: string }) {
-  const w = useWallet();
   return (
     <div className="notice" style={{ marginTop: 20 }}>
-      You're looking at this desk as <Party address={address} />. {w.address === address ? "Varial has this account, so you can act." : "To act, connect Varial as this account."}{" "}
+      You're looking at this desk as <Party address={address} />. This preview is read-only, even with a matching wallet. Leave preview to sign.{" "}
       <Link href="?">Back to my own wallet</Link>
     </div>
   );

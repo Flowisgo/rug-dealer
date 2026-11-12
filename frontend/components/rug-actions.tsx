@@ -285,7 +285,7 @@ export function CoSignPanel({
   const latest = useLatestLedger();
   const [text, setText] = useState(initial ?? "");
   // Set once this session's "Sign to close the certificate" is confirmed.
-  const [doneHash, setDoneHash] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState<{ rugId: bigint; holder: string; hash: string } | null>(null);
   let parsed: Handover | null = null;
   let parseErr: string | null = null;
   if (text.trim()) {
@@ -301,7 +301,7 @@ export function CoSignPanel({
   return (
     <div className="panel">
       {titled && <p className="panel-title">Hand a rug over</p>}
-      {!doneHash && (
+      {!confirmed && (
         <label className="field">
           <span>Hand-over code from the rug's holder</span>
           <textarea
@@ -313,14 +313,14 @@ export function CoSignPanel({
         </label>
       )}
       {parseErr && <p className="error-text">{parseErr}</p>}
-      {parsed && doneHash && (
+      {confirmed && (
         <>
-          <HandedOver rugId={BigInt(parsed.rug)} holder={parsed.holder} hash={doneHash} />
+          <HandedOver {...confirmed} />
           <p className="small" style={{ marginTop: 12 }}>
             <button
               className="btn btn-quiet"
               onClick={() => {
-                setDoneHash(null);
+                setConfirmed(null);
                 setText("");
               }}
             >
@@ -329,7 +329,7 @@ export function CoSignPanel({
           </p>
         </>
       )}
-      {parsed && !doneHash && (
+      {parsed && !confirmed && (
         <div style={{ display: "grid", gap: 12 }}>
           {state === "old-contract" ? (
             <p className="error-text">
@@ -375,8 +375,9 @@ export function CoSignPanel({
                 label="Sign to close the certificate"
                 signer={parsed.store}
                 run={async (onStep) => {
-                  const r = await submitHandover(parsed!, onStep);
-                  setDoneHash(r.hash);
+                  const submitted = parsed!;
+                  const r = await submitHandover(submitted, onStep);
+                  setConfirmed({ rugId: BigInt(submitted.rug), holder: submitted.holder, hash: r.hash });
                   return r;
                 }}
               />

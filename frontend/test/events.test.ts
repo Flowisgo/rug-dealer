@@ -25,7 +25,7 @@ describe("held investor payouts", () => {
     const e = decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 7n, amount: 6_450_000_000n }, META);
     expect(e).toMatchObject({ kind: "investor_credited", investor: ACCOUNTS.investor, loanId: 7n, amount: 6_450_000_000n });
     expect(text(e)).toBe(
-      "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so the contract is holding it for them to withdraw. The loan is closed.",
+      "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so it was held as credit. This closes the loan, not the payout delivery; a later withdrawal delivers it.",
     );
   });
   it("decodes credit_withdrawn", () => {
@@ -80,13 +80,13 @@ describe("decoding real testnet events", () => {
 
   it("loan_repaid", () => {
     const e = fromFixture("loan_repaid");
-    expect(text(e)).toBe("Ayşe the weaver repaid 600.00 USDC on rug No. 0001. Deniz the investor got back 645.00 USDC.");
+    expect(text(e)).toBe("Ayşe the weaver repaid 600.00 USDC on rug No. 0001. Deniz the investor has a settled payout of 645.00 USDC.");
   });
 
   it("store_bought_out", () => {
     const e = fromFixture("store_bought_out");
     expect(e).toMatchObject({ kind: "store_bought_out", rugId: 2n, store: ACCOUNTS.store });
-    expect(text(e)).toBe("Kaya Rug House bought rug No. 0002 for 600.00 USDC. Deniz the investor got back 607.50 USDC.");
+    expect(text(e)).toBe("Kaya Rug House bought rug No. 0002 for 600.00 USDC. Deniz the investor has a settled payout of 607.50 USDC.");
   });
 
   it("store_frozen decodes the reason enum", () => {
@@ -98,7 +98,7 @@ describe("decoding real testnet events", () => {
   it("rug_claimed", () => {
     const e = fromFixture("rug_claimed");
     expect(e).toMatchObject({ kind: "rug_claimed", rugId: 3n, investor: ACCOUNTS.investor, store: ACCOUNTS.store2, interest: 75_000_000n });
-    expect(text(e)).toBe("Deniz the investor took rug No. 0003 and 7.50 USDC interest after Bazaar Corner Rugs missed the buy-out.");
+    expect(text(e)).toBe("Deniz the investor took rug No. 0003 with a settled interest payout of 7.50 USDC after Bazaar Corner Rugs missed the buy-out.");
   });
 });
 

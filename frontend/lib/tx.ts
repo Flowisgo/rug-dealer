@@ -40,23 +40,35 @@ export type TxResult = { hash: string; value: unknown };
 
 const PENDING_KEY = `rugdealer:${CONTRACT_ID}:pending`;
 
-export function loadPending(): Pending | null {
+/** One storage key per hash: parallel actions/tabs cannot overwrite each other. */
+export function loadPendings(): Pending[] {
   try {
-    const p = JSON.parse(localStorage.getItem(PENDING_KEY) || "null") as Pending | null;
-    return p && /^[0-9a-f]{64}$/.test(p.hash) ? p : null;
+    const legacy = localStorage.getItem(PENDING_KEY);
+    if (legacy) {
+      const p = JSON.parse(legacy) as Pending;
+      if (/^[0-9a-f]{64}$/.test(p.hash)) savePending(p);
+      localStorage.removeItem(PENDING_KEY);
+    }
+    const result: Pending[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)!;
+      if (!key.startsWith(`${PENDING_KEY}:`)) continue;
+      const p = JSON.parse(localStorage.getItem(key)!) as Pending;
+      if (/^[0-9a-f]{64}$/.test(p.hash)) result.push(p);
+    }
+    return result.sort((a, b) => a.at - b.at);
   } catch {
-    return null;
+    return [];
   }
 }
+export const loadPending = (): Pending | null => loadPendings()[0] ?? null;
 function savePending(p: Pending) {
-  try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(p));
-  } catch {}
+  // Refuse submission if recovery storage is unavailable.
+  try { localStorage.setItem(`${PENDING_KEY}:${p.hash}`, JSON.stringify(p)); }
+  catch { throw new AppError("Enable browser storage before signing so this transaction can be recovered after refresh."); }
 }
-export function clearPending() {
-  try {
-    localStorage.removeItem(PENDING_KEY);
-  } catch {}
+export function clearPending(hash: string) {
+  localStorage.removeItem(`${PENDING_KEY}:${hash}`);
 }
 
 /** Poll a sent transaction until it succeeds, fails, or we give up. */
@@ -83,21 +95,22 @@ export function pendingOutcome(networkStatus: string, ageMs: number): { status: 
 }
 
 /** Look up a pending transaction left by an earlier page load. */
-export async function resumePending(): Promise<{ pending: Pending; status: PendingStatus } | null> {
-  const p = loadPending();
+export async function resumePending(p: Pending | null = loadPending()): Promise<{ pending: Pending; status: PendingStatus } | null> {
   if (!p) return null;
   const r = await server().getTransaction(p.hash);
   const o = pendingOutcome(r.status, Date.now() - p.at);
-  if (o.clear) clearPending();
+  if (o.clear) clearPending(p.hash);
   return { pending: p, status: o.status };
 }
 
+export const resumePendings = () => Promise.all(loadPendings().map((p) => resumePending(p)));
+
 /** Refuse to start a new transaction while an earlier one may still land:
- * one pending record at a time, never overwritten. */
+ * already submitted hashes remain separate even when signatures overlap. */
 async function ensureNothingPending() {
   if (!loadPending()) return;
-  const r = await resumePending();
-  if (r?.status === "NOT_FOUND")
+  const outcomes = await resumePendings();
+  if (outcomes.some((r) => r?.status === "NOT_FOUND"))
     throw new AppError("An earlier transaction is still waiting for the network. Give it a minute, then refresh.", undefined, "network");
 }
 
@@ -114,18 +127,18 @@ async function signSendConfirm(tx: Transaction, source: string, label: string, o
   savePending({ hash, label, source, at: Date.now() });
   const sent = await server().sendTransaction(signed);
   if (sent.status === "ERROR") {
-    clearPending();
-    throw explainError(safeJson(sent.errorResult ?? sent));
+    clearPending(hash);
+    throw explainError(safeJson(sent.errorResult ?? sent), sent.diagnosticEvents);
   }
   onStep("confirming");
   const res = await waitFor(hash);
   if (res.status === "SUCCESS") {
-    clearPending();
+    clearPending(hash);
     const ret = res.returnValue;
     return { hash, value: ret ? scValToNative(ret) : undefined };
   }
   if (res.status === "FAILED") {
-    clearPending();
+    clearPending(hash);
     throw new AppError("The network ran the transaction but it failed, so nothing changed. Refresh and try again.", undefined, "network");
   }
   throw new AppError("Sent, but the network hasn't confirmed it yet. Refresh in a minute to see if it went through.", undefined, "network");
@@ -171,7 +184,7 @@ export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = (
       .setTimeout(TX_TIMEOUT_SECONDS)
       .build();
     const sim = await server().simulateTransaction(tx);
-    if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error);
+    if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error, sim.events);
     if (rpc.Api.isSimulationRestore(sim)) {
       await restore(call.source, sim, onStep);
       continue;

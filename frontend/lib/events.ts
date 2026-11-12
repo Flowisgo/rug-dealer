@@ -120,11 +120,11 @@ export function describe(e: AppEvent): Part[] {
     case "loan_funded":
       return [who(e.investor), " lent ", amt(e.principal), " on rug ", rug(e.rugId), ". The weaver received ", amt(e.weaverPayout), "."];
     case "loan_repaid":
-      return [who(e.weaver), " repaid ", amt(e.principal), " on rug ", rug(e.rugId), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
+      return [who(e.weaver), " repaid ", amt(e.principal), " on rug ", rug(e.rugId), ". ", who(e.investor), " has a settled payout of ", amt(e.principal + e.interest), "."];
     case "store_bought_out":
-      return [shop(e.store), " bought rug ", rug(e.rugId), " for ", amt(e.principal), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
+      return [shop(e.store), " bought rug ", rug(e.rugId), " for ", amt(e.principal), ". ", who(e.investor), " has a settled payout of ", amt(e.principal + e.interest), "."];
     case "rug_claimed":
-      return [who(e.investor), " took rug ", rug(e.rugId), " and ", amt(e.interest), " interest after ", shop(e.store), " missed the buy-out."];
+      return [who(e.investor), " took rug ", rug(e.rugId), " with a settled interest payout of ", amt(e.interest), " after ", shop(e.store), " missed the buy-out."];
     case "rug_redeemed":
       // A store redeeming a rug it holds itself can only follow its own buy-out.
       return e.holder === e.store
@@ -135,7 +135,7 @@ export function describe(e: AppEvent): Part[] {
         who(e.investor),
         "'s wallet couldn't take the payout of ",
         amt(e.amount),
-        ", so the contract is holding it for them to withdraw. The loan is closed.",
+        ", so it was held as credit. This closes the loan, not the payout delivery; a later withdrawal delivers it.",
       ];
     case "credit_withdrawn":
       return [who(e.investor), " withdrew ", amt(e.amount), " the contract was holding for them."];

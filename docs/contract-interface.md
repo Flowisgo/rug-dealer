@@ -500,3 +500,11 @@ Public deployment data:
 
 Secret keys are **not** in this repository. The demo identities live in the Stellar CLI config directory `~/.rugdealer-demo/config` (created by `scripts/testnet.py`). Only public keys are recorded here.
 
+
+## Demo-readiness additions (local fix branch, not yet deployed)
+
+- `store_count() -> u32`: number of registered stores, including frozen stores.
+- `store_at(index: u32) -> Address`: zero-based durable discovery. Returns `StoreNotRegistered` for an absent index. Entries live in persistent storage, one address per index; clients read pages/concurrent small batches. `get_store(address)` remains the authority for limits and status. These views require a fresh deployment; old manifests must not advertise `features.store_index`.
+- Constructor rejects a maximum term plus buy-out window that cannot fit `u64`. Funding checks `ledger timestamp + duration + window` before taking money, and returns `InvalidAmount` without changing Requested state if it overflows.
+- Frontend payout reporting treats loan closure, credit creation and credit withdrawal separately. Credit is aggregated per investor; a `credit_withdrawn` event empties their entire credit. A rug timeline may therefore show an aggregate withdrawal that includes other loans. Missing event history is reported as unverified delivery, never as receipt of money.
+- A hand-over release message names the immutable submitted rug, holder and confirmed hash, and requires a fresh read of that same Redeemed certificate. Editing the pasted code cannot change the confirmed release instruction.

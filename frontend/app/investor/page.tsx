@@ -1,4 +1,6 @@
 "use client";
+import { LoanPayout } from "@/components/payout";
+import { messageOf } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { HandoverPanel } from "@/components/rug-actions";
 import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
@@ -51,7 +53,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
           <>You haven't lent yet. Open requests are below.</>
         ) : (
           <>
-            You've lent <MoneySentence units={t.lent} /> and earned <MoneySentence units={t.earned} /> in interest.{" "}
+            You've lent <MoneySentence units={t.lent} /> and closed loans account for <MoneySentence units={t.earned} /> in interest. Delivery is shown on each loan.{" "}
             {t.open === 0 ? (
               "No loans of yours are running."
             ) : (
@@ -83,7 +85,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
         ) : (
           <div className="card-list">
             {mine.map((l) => (
-              <MyLoan key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} />
+              <MyLoan key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} data={data} />
             ))}
           </div>
         )}
@@ -136,17 +138,21 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
 /** A payout the contract is holding because it couldn't reach the investor's
  * wallet when the loan closed. Shown only when there is one. */
 function HeldPayout({ investor, loadedAt }: { investor: string; loadedAt: number }) {
+  const [creditError, setCreditError] = useState<string | null>(null);
   const [credit, setCredit] = useState<bigint | null>(null);
   useEffect(() => {
     let alive = true;
+    setCreditError(null);
+    setCredit(null);
     getCredit(investor).then(
       (c) => alive && setCredit(c),
-      () => alive && setCredit(null),
+      (e) => alive && setCreditError(messageOf(e)),
     );
     return () => {
       alive = false;
     };
   }, [investor, loadedAt]);
+  if (creditError) return <p className="notice warn">Held payout balance unavailable: {creditError} Refresh to retry.</p>;
   if (!credit || credit <= 0n) return null;
   return (
     <div className="notice warn" style={{ marginTop: 24, display: "grid", gap: 12 }}>
@@ -222,7 +228,7 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
   );
 }
 
-function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; win: bigint }) {
+function MyLoan({ loan, rug, now, win, data }: { loan: Loan; rug?: Rug; now: bigint; win: bigint; data: Ledger }) {
   const phase = loanPhase(loan, now, win);
   const tone: Tone = phase === "running" ? "secured" : phase === "buyout" || phase === "claimable" ? "late" : "done";
   const text = phase === "running" ? "Running" : phase === "buyout" ? "Overdue" : phase === "claimable" ? "Store missed buy-out" : LOAN_STATUS_TEXT[loan.status];
@@ -280,21 +286,7 @@ function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; w
           />
         </>
       )}
-      {loan.status === "Repaid" && (
-        <p className="small">
-          The weaver repaid. You got back <MoneyInline units={loan.principal + loan.interest} />.
-        </p>
-      )}
-      {loan.status === "BoughtOut" && (
-        <p className="small">
-          The store bought the rug. You got back <MoneyInline units={loan.principal + loan.interest} />.
-        </p>
-      )}
-      {loan.status === "Claimed" && (
-        <p className="small">
-          You took the rug and <MoneyInline units={loan.interest} /> interest after the store missed its buy-out.
-        </p>
-      )}
+      <LoanPayout loan={loan} data={data} />
     </RugCard>
   );
 }

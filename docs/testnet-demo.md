@@ -18,7 +18,7 @@ By default the script uses:
 ~/.rugdealer-demo/logs        command logs
 ```
 
-Override the state directory with `RUGDEALER_STATE` if needed. The script refuses to use a directory inside the repository. The repository only receives public data:
+Override the key directory with `RUGDEALER_STATE`, the public manifest with `RUGDEALER_MANIFEST`, and results with `RUGDEALER_RESULTS`. Use absolute paths for all three. A state-directory override alone does not select a deployment. The script refuses to use a directory inside the repository. The repository only receives public data:
 
 ```text
 docs/testnet-deployment.json
@@ -87,7 +87,7 @@ Notes:
 - The claim scenario uses `store2`, which becomes frozen and emits `store_frozen` with reason `MissedBuyout`.
 - The main store remains active after the demo, so the frontend can keep minting new rug certificates with it.
 - The claim investor keeps the rug certificate and can redeem it with the store’s signature.
-- The `demo` command refuses to run a scenario if its store is already frozen; run `deploy` again for a fresh contract.
+- The `demo` command preflights **all** selected stores, capacity, identities and contract parameters before its first write; it refuses if any store is already frozen; run `deploy` again for a fresh contract.
 
 The live demo exercises normal investor receipt. The deauthorized-investor credit fallback is covered by `cargo test`: `repay`, `store_buyout` and `claim_rug` still close the loan, record the exact credit, and `withdraw_credit` pays it once the investor can receive again.
 
@@ -106,3 +106,34 @@ The live demo exercises normal investor receipt. The deauthorized-investor credi
 | Investor | `GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W` |
 
 See `docs/contract-interface.md` for the full API and `docs/testnet-demo-results.json` for the verified scenario records.
+
+## Isolated rehearsal and web configuration
+
+Never rehearse writes against the shared deployment. In a separate checkout, with Node dependencies installed and Rust/wasm and Stellar CLI available:
+
+```bash
+export RUGDEALER_STATE="$(mktemp -d /tmp/rugdealer-keys.XXXXXX)"
+export RUGDEALER_MANIFEST="$RUGDEALER_STATE/deployment.json"
+export RUGDEALER_RESULTS="$RUGDEALER_STATE/results.json"
+python3 scripts/testnet.py deploy
+python3 scripts/testnet.py status
+python3 scripts/testnet.py demo --scenario all
+cd frontend
+npm ci
+npm run build
+npm start
+```
+
+`deploy` writes the complete public manifest: Testnet network, contract ID, deployment ledger/hash, SAC, `USDC:<issuer>`, issuer, admin/fee recipient, both stores, weaver, investor, fee/timing parameters, WASM hash, and feature flags. This prototype creates its **own test USDC issuer**, not Circle's asset. Every paying/receiving account needs test XLM and that exact issuer's USDC trustline. Six aliases in the selected key directory must match the manifest. Keep secrets private and outside Git. Only the public manifest is needed on a build host; publish its reviewed contents as `docs/testnet-deployment.json`, or provide its absolute build-time path in `RUGDEALER_MANIFEST`.
+
+Frontend npm commands generate `lib/deployment-data.json` from that manifest; do not copy individual constants. Rebuild after changing it. On Vercel, retain root `frontend/` and include the repository's `docs/` directory in the build inputs. Testnet passphrase/RPC/Horizon/Friendbot/explorer defaults are in `lib/deployment.ts`; the script uses the CLI's `testnet` network plus Testnet Horizon and Friendbot. Verify `stellar network info testnet` before a signed rehearsal.
+
+The new contract supports `store_count`/`store_at` for durable store discovery (`features.store_index: true` on fresh deploy). The checked-in older deployment lacks these views; its frontend still directly looks up the connected store and offers admin address lookup when events have expired. Do not enable the flag for an old contract. The deadline-overflow fix also requires a fresh contract deployment; the current demo's 60/60-second settings are unaffected.
+
+Timing is checked against **closed ledger timestamps**. The CLI polls Horizon, then simulates each timed action before sending. Only unsigned too-early simulations are retried. If a signed submission has an uncertain outcome, inspect its hash before trying again. A 60-second buy-out window leaves little time for manual wallet signing: stage the buy-out account first. Claim freezes store2, so `all` is a one-pass rehearsal per deployment; redeploy for another full run.
+
+Local script regressions (fake external CLI, no network writes):
+
+```bash
+python3 -m unittest discover -s scripts/tests -v
+```

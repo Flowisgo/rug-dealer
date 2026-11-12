@@ -11,8 +11,8 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
-import { ACCOUNTS, CONTRACT_ID, KNOWN_STORES, NETWORK_PASSPHRASE, RPC_URL, USDC_ID } from "./deployment";
-import { explainError } from "./errors";
+import { ACCOUNTS, CONTRACT_ID, HAS_STORE_INDEX, KNOWN_STORES, NETWORK_PASSPHRASE, RPC_URL, USDC_ID } from "./deployment";
+import { AppError, explainError } from "./errors";
 import type { Quote } from "./money";
 
 export type RugStatus = "Free" | "Requested" | "Locked" | "Redeemed";
@@ -84,7 +84,7 @@ export async function simulateRead(contractId: string, method: string, args: xdr
     .setTimeout(30)
     .build();
   const sim = await server().simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error);
+  if (rpc.Api.isSimulationError(sim)) throw explainError(sim.error, sim.events, contractId);
   if (!sim.result) throw explainError("");
   return scValToNative(sim.result.retval);
 }
@@ -188,8 +188,9 @@ export async function findStore(address: string): Promise<Store | null> {
 export async function usdcBalance(address: string): Promise<bigint | null> {
   try {
     return BigInt((await simulateRead(USDC_ID, "balance", [addr(address)])) as bigint);
-  } catch {
-    return null;
+  } catch (e) {
+    if (e instanceof AppError && e.source === "usdc" && e.code === 13) return null;
+    throw e;
   }
 }
 
@@ -220,7 +221,11 @@ export async function listLoans(): Promise<Loan[]> {
 }
 
 export async function listStores(extra: string[] = []): Promise<Store[]> {
-  const addresses = [...new Set([...KNOWN_STORES, ...extra])];
+  const indexed = HAS_STORE_INDEX ? await pool(
+    Array.from({ length: Number(await read("store_count")) }, (_, i) => i), 6,
+    async (i) => String(await read("store_at", [u32(i)])),
+  ) : [];
+  const addresses = [...new Set([...KNOWN_STORES, ...indexed, ...extra])];
   const found = await pool(addresses, 6, findStore);
   return found.filter((s): s is Store => s !== null);
 }

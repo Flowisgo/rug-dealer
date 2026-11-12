@@ -1,6 +1,8 @@
 // USDC amounts are bigint base units with 7 decimals, exactly as the contract
 // stores them. Never use floating point for money.
 
+export const AMOUNT_GUIDANCE = "Use a dot for decimals (6.50); optional commas group thousands (1,250.25). Up to 7 decimal places.";
+
 export const DECIMALS = 7;
 export const UNIT = 10_000_000n;
 
@@ -14,7 +16,10 @@ const group = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
  * Returns null for anything that is not a positive-or-zero number with at most
  * 7 decimals. */
 export function parseUsdc(input: string): bigint | null {
-  const clean = input.trim().replace(/,/g, "");
+  const typed = input.trim();
+  // A dot is the decimal separator; commas are optional groups of three.
+  if (!/^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)(?:\.\d*)?$/.test(typed)) return null;
+  const clean = typed.replace(/,/g, "");
   const match = /^(\d+)(?:\.(\d*))?$/.exec(clean);
   if (!match) return null;
   const [, whole, frac = ""] = match;

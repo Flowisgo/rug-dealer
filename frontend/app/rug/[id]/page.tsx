@@ -1,4 +1,6 @@
 "use client";
+import { LoanPayout } from "@/components/payout";
+import { eventsForRug } from "@/lib/payouts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -7,7 +9,7 @@ import { Sentence, when, whenSec } from "@/components/sentence";
 import { MoneyBlock } from "@/components/money";
 import { Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
-import { describe, rugIdOf, type AppEvent } from "@/lib/events";
+import { describe, type AppEvent } from "@/lib/events";
 import { RUG_PATTERN_NOTE } from "@/lib/kilim";
 import { rugNo } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
@@ -54,12 +56,7 @@ export default function RugPage() {
   const last = latestLoanFor(id, data.loans);
   const phase = open ? loanPhase(open, now, win) : null;
 
-  // Events for this rug, plus the store freeze that a claim on it caused.
-  const claimTx = new Set(data.events.filter((e) => e.kind === "rug_claimed" && e.rugId === id).map((e) => e.txHash));
-  const events = data.events
-    .filter((e) => rugIdOf(e) === id || (e.kind === "store_frozen" && claimTx.has(e.txHash)))
-    // The freeze is a consequence of the claim in the same transaction: show it after.
-    .sort((a, b) => a.ledger - b.ledger || Number(a.kind === "store_frozen") - Number(b.kind === "store_frozen"));
+  const events = eventsForRug(id, data.loans, data.events);
 
   let tag: { text: string; tone: Tone } = rugLabel(rug);
   if (phase === "buyout" || phase === "claimable") tag = { text: "Overdue", tone: "late" };
@@ -102,6 +99,7 @@ export default function RugPage() {
         </RugCard>
       </div>
 
+      {loans.map((loan) => <LoanPayout key={loan.id.toString()} loan={loan} data={data} />)}
       <Section label="Timeline" count={events.length}>
         {data.eventsTrimmed && (
           <p className="notice small" style={{ marginBottom: 16 }}>
@@ -132,7 +130,7 @@ export default function RugPage() {
               <>
                 <li>
                   <time>{whenSec(open.end_at)}</time>
-                  {phase === "running" ? "Due. The weaver repays by then to take the rug back." : "Was due. The weaver can still repay until the store buys the rug."}
+                  {phase === "running" ? "Due. The weaver repays by then to take the rug back." : "Was due. The weaver can still repay until the store buys the rug or the investor claims it."}
                 </li>
                 <li>
                   <time>{whenSec(open.end_at + win)}</time>

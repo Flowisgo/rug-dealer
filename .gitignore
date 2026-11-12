@@ -17,3 +17,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Generated from RUGDEALER_MANIFEST (or docs/testnet-deployment.json)
+frontend/lib/deployment-data.json

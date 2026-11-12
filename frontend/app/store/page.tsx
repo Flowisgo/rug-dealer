@@ -9,7 +9,7 @@ import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Part
 import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract";
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
 import { redeemOwnRug } from "@/lib/handover";
-import { formatLocal, parseUsdc, quoteLocally, rugNo } from "@/lib/money";
+import { AMOUNT_GUIDANCE, formatLocal, parseUsdc, quoteLocally, rugNo, usdcLabel } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, mintBlock, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { useLedger, useNow, type Ledger } from "@/lib/use-ledger";
@@ -17,7 +17,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 
 export default function StorePage() {
   const { viewer, lookingAs } = useViewer();
-  const { data, error, refresh } = useLedger();
+  const { data, error, refresh } = useLedger(viewer);
   const params = useSearchParams();
   const handover = params.get("handover");
 
@@ -297,7 +297,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
               className="input mono"
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
-              placeholder="Gâ€¦"
+              placeholder="G…"
               aria-invalid={pasted !== "" && !weaverOk}
               spellCheck={false}
             />
@@ -316,7 +316,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
             className="input"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Hand-knotted wool, madder red field, 160 Ã— 230 cm"
+            placeholder="Hand-knotted wool, madder red field, 160 × 230 cm"
             aria-invalid={description !== "" && !descOk}
           />
           <span className="hint">
@@ -334,11 +334,11 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
           />
           <span className="hint">
             {priceOk ? (
-              <span className="mono">â‰ˆ {formatLocal(units!)} TRY</span>
+              <span className="mono">{usdcLabel(units!)} · ≈ {formatLocal(units!)} TRY</span>
             ) : (
-              <span className="error-text">Enter a USDC amount above zero, up to 7 decimals.</span>
+              <span className="error-text">Enter a valid USDC amount above zero.</span>
             )}{" "}
-            What you'd normally pay for this rug. You must buy it at this price if the loan isn't repaid.
+            {AMOUNT_GUIDANCE} What you'd normally pay for this rug. You must buy it at this price if the loan isn't repaid.
           </span>
         </label>
         <ActionButton

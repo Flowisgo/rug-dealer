@@ -9,7 +9,13 @@
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "smoke": "vitest run --config vitest.testnet.config.ts"
+    "smoke": "vitest run --config vitest.testnet.config.ts",
+    "configure": "node scripts/configure-deployment.mjs",
+    "predev": "npm run configure",
+    "prebuild": "npm run configure",
+    "pretest": "npm run configure",
+    "pretypecheck": "npm run configure",
+    "presmoke": "npm run configure"
   },
   "dependencies": {
     "@stellar/freighter-api": "6.0.1",
@@ -22,6 +28,7 @@
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "jsdom": "31.0.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   }

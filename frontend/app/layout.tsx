@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={sans.variable}>
       <body>
+        <Suspense fallback={<main>Loading RugDealer…</main>}>
         <WalletProvider>
           <Suspense>
             <Header />
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </main>
           <Footer />
         </WalletProvider>
+        </Suspense>
       </body>
     </html>
   );

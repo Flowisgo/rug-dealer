@@ -190,7 +190,7 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
         <>
           {late ? (
             <p className="notice warn">
-              <strong>Late: you can still repay until the store buys the rug.</strong>{" "}
+              <strong>Late: you can still repay until the store buys the rug or the investor claims it.</strong>{" "}
               {phase === "buyout" ? (
                 <>
                   The store's buy-out window closes in <Countdown to={loan.end_at! + win} />.

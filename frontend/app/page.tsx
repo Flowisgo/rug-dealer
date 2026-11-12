@@ -132,7 +132,7 @@ export default function Home() {
           </article>
           <article className="outcome">
             <h3>The weaver doesn't repay</h3>
-            <p>After the end date, the store has 7 days to buy the rug at the price it set.</p>
+            <p>After the end date, the store has 60 seconds in this demo (7 days planned) to buy the rug at the price it set.</p>
             <dl>
               <div>
                 <dt>Weaver</dt>
@@ -152,7 +152,7 @@ export default function Home() {
           </article>
           <article className="outcome">
             <h3>The store misses its buy-out too</h3>
-            <p>If the store doesn't pay within its 7 days, the investor can take the rug instead.</p>
+            <p>If the store doesn't pay within the demo’s 60-second window, the investor can take the rug instead.</p>
             <dl>
               <div>
                 <dt>Weaver</dt>
