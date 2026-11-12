@@ -139,6 +139,9 @@ pub enum Error {
     BuyoutWindowClosed = 19,
     BuyoutWindowOpen = 20,
     InvalidState = 21,
+    WeaverIsStore = 22,
+    StoreCannotBorrow = 23,
+    InvestorIsParty = 24,
 }
 
 #[contractevent]
@@ -340,6 +343,12 @@ fn require_funded(loan: &Loan) -> Result<(), Error> {
     }
 }
 
+fn is_registered_store(env: &Env, address: &Address) -> bool {
+    env.storage()
+        .persistent()
+        .has(&DataKey::Store(address.clone()))
+}
+
 fn calculate_quote(cfg: &Config, principal: i128, months: u32) -> Result<Quote, Error> {
     if principal <= 0 {
         return Err(Error::InvalidAmount);
@@ -500,6 +509,9 @@ impl RugDealer {
         price: i128,
     ) -> Result<u64, Error> {
         store.require_auth();
+        if is_registered_store(&env, &weaver) {
+            return Err(Error::WeaverIsStore);
+        }
 
         let value = get_store(&env, &store)?;
         if value.frozen {
@@ -536,6 +548,9 @@ impl RugDealer {
 
     pub fn request_loan(env: Env, weaver: Address, rug_id: u64, months: u32) -> Result<u64, Error> {
         weaver.require_auth();
+        if is_registered_store(&env, &weaver) {
+            return Err(Error::StoreCannotBorrow);
+        }
         let cfg = config(&env);
 
         let mut rug = get_rug(&env, rug_id)?;
@@ -630,9 +645,12 @@ impl RugDealer {
 
     pub fn fund_loan(env: Env, investor: Address, loan_id: u64) -> Result<(), Error> {
         investor.require_auth();
-        let cfg = config(&env);
 
         let mut loan = get_loan(&env, loan_id)?;
+        if investor == loan.weaver || investor == loan.store {
+            return Err(Error::InvestorIsParty);
+        }
+        let cfg = config(&env);
         if loan.status != LoanStatus::Requested {
             return Err(Error::LoanNotRequested);
         }
@@ -850,7 +868,9 @@ impl RugDealer {
     pub fn redeem(env: Env, holder: Address, rug_id: u64) -> Result<(), Error> {
         let mut rug = get_rug(&env, rug_id)?;
         holder.require_auth();
-        rug.store.require_auth();
+        if holder != rug.store {
+            rug.store.require_auth();
+        }
 
         if rug.owner != holder {
             return Err(Error::NotRugOwner);

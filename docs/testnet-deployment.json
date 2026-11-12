@@ -1,7 +1,9 @@
 {
   "network": "testnet",
-  "deployed_at": "2026-11-12T06:36:40.432976+00:00",
-  "contract": "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+  "deployed_at": "2026-11-12T16:16:36.243995+00:00",
+  "contract": "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
+  "deploy_tx_hash": "42c3d3962232ab5b2cf1a4ae0170ba4d443873973acf103feb93ee3be5c654a0",
+  "deploy_ledger": 5695308,
   "usdc": "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM",
   "usdc_asset": "USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
   "usdc_issuer": "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
@@ -23,12 +25,12 @@
     "store_limit": 50000000000,
     "rug_price": 6000000000
   },
-  "wasm_sha256": "2af65c1a8cba1311ed37cea32cb2ca85710ffad6ccd71fbb4c56b3f768aa7060",
+  "wasm_sha256": "c04e798bc363c1f4ea83c9c4a7d2906bfcaba81fc547391269fb9e6437eb24ef",
   "transactions": [
     {
       "action": "mint-usdc-admin",
       "hashes": [
-        "9ba8e860857a798af50cd3ea5233c5ae29cb2d631726508ff069caa3a3bf949f"
+        "124c19b11938250ab0e16e8f47501e562a2416cf5e1f729dd083c2b748d7ea51"
       ],
       "command": [
         "stellar",
@@ -51,7 +53,7 @@
     {
       "action": "mint-usdc-store",
       "hashes": [
-        "813990fc55caca00fdaf71a2ff6eb8bee52da4e7cd914dd049660d99e0cba183"
+        "d6dc6b4082baf5c6330d21c67c9134ee51afe5f5ad6073e577faf8a7872e8492"
       ],
       "command": [
         "stellar",
@@ -74,7 +76,7 @@
     {
       "action": "mint-usdc-store2",
       "hashes": [
-        "5fbcb68f6bff8fc4a7fa6e62b027d4266d3d2faa748b27ee0ac45fca4bd6092c"
+        "24b726b693aab47c8d99ce55a53f791562e2b3af757e57627dd2029842871ae4"
       ],
       "command": [
         "stellar",
@@ -97,7 +99,7 @@
     {
       "action": "mint-usdc-weaver",
       "hashes": [
-        "174b676046079e324ab7966f59c1df76c7dbf31780bbf3b4d0598f2611dc0483"
+        "8c3bfd1369376175f70e2f530fef340766c6ca2cf8f9c9b981971c9192b78f96"
       ],
       "command": [
         "stellar",
@@ -120,7 +122,7 @@
     {
       "action": "mint-usdc-investor",
       "hashes": [
-        "4078e75bfefebf9524f34814e1cf924e0877ea814477a002b9d926a2e8357f98"
+        "2c3d07b532fdb314ee4dddf52268ae84b8cb76ae3f85feaed00f5a1417d88313"
       ],
       "command": [
         "stellar",
@@ -143,7 +145,8 @@
     {
       "action": "deploy-contract",
       "hashes": [
-        "09b5c88699ac9214d1843db5901d3a299fe8387ac3a6535cb10661146b7866b0"
+        "3ec93dbbdb640a677f72cef4161d8341fbf9f4f708c1c323ca74afab8c752a7d",
+        "42c3d3962232ab5b2cf1a4ae0170ba4d443873973acf103feb93ee3be5c654a0"
       ],
       "command": [
         "stellar",
@@ -179,14 +182,14 @@
     {
       "action": "register-store",
       "hashes": [
-        "49f4194c6d773fd345a849b52c6fbbda00df59fe58c68d01bdff6be4d0ce67a3"
+        "29f71d8d34cd4e692a671ae2376fc598c959df55bc62ee2d506812cb825a8289"
       ],
       "command": [
         "stellar",
         "contract",
         "invoke",
         "--id",
-        "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+        "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
         "--source",
         "rd-admin",
         "--network",
@@ -202,14 +205,14 @@
     {
       "action": "register-store2",
       "hashes": [
-        "90a1211ab338da56a47d14c969b1b2dd048345adf16d062752be6401a99d0f1d"
+        "ca28c7b098b08ea58187ebf45cdb6723611a5708997a81feb75f6ebf16a90879"
       ],
       "command": [
         "stellar",
         "contract",
         "invoke",
         "--id",
-        "CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG",
+        "CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR",
         "--source",
         "rd-admin",
         "--network",

@@ -118,12 +118,13 @@ Creates an in-contract rug certificate owned by `weaver` with the given descript
 
 Requirements:
 - store is registered and not frozen
+- `weaver` is not a registered store (any store, including `store` itself)
 - `price > 0`
 - description length is 1–280 bytes
 
 Emits `rug_minted`.
 
-Errors: `StoreNotRegistered`, `StoreFrozen`, `InvalidPrice`, `InvalidDescription`.
+Errors: `StoreNotRegistered`, `StoreFrozen`, `WeaverIsStore`, `InvalidPrice`, `InvalidDescription`.
 
 ### `request_loan(weaver, rug_id, months) -> loan_id`
 
@@ -132,6 +133,7 @@ Signer: `weaver`.
 Creates a loan request for exactly `Rug.price` over `months` whole months (`1..=max_months`).
 
 Requirements:
+- `weaver` is not a registered store
 - `Rug.owner == weaver`
 - `Rug.status == Free`
 - `1 <= months <= max_months`
@@ -145,7 +147,7 @@ Effects:
 
 Emits `loan_requested`.
 
-Errors: `RugNotFound`, `NotRugOwner`, `RugNotFree`, `InvalidMonths`, `StoreNotRegistered`, `InvalidAmount`, `StoreLimitExceeded`.
+Errors: `RugNotFound`, `NotRugOwner`, `RugNotFree`, `StoreCannotBorrow`, `InvalidMonths`, `StoreNotRegistered`, `InvalidAmount`, `StoreLimitExceeded`.
 
 ### `cancel_request(loan_id)`
 
@@ -159,7 +161,7 @@ Errors: `LoanNotFound`, `LoanNotRequested`, `InvalidState`, `StoreNotRegistered`
 
 Signer: `investor`.
 
-Only valid while the loan is `Requested`.
+Only valid while the loan is `Requested`. The investor must be a third party: it cannot be the loan’s weaver or the loan’s store.
 
 Effects:
 - sets `investor`, `funded_at`, and `end_at = funded_at + months × month_seconds`
@@ -171,7 +173,7 @@ Effects:
 
 Emits `loan_funded` with the exact split and `end_at`.
 
-Errors: `LoanNotFound`, `LoanNotRequested`, `InvalidState`, `StoreNotRegistered`, `StoreLimitExceeded`, `InvalidAmount`.
+Errors: `LoanNotFound`, `InvestorIsParty`, `LoanNotRequested`, `InvalidState`, `StoreNotRegistered`, `StoreLimitExceeded`, `InvalidAmount`.
 
 ### `repay(loan_id)`
 
@@ -238,7 +240,7 @@ Errors: `LoanNotFound`, `LoanNotFunded`, `LoanSettled`, `BuyoutWindowOpen`, `Inv
 
 ### `redeem(holder, rug_id)`
 
-Signers: `holder` and `Rug.store`.
+Signers: `holder` and `Rug.store`. When `holder == Rug.store`, one store signature satisfies both roles; otherwise both must sign.
 
 Only valid when `Rug.owner == holder` and `Rug.status == Free`. Marks the rug `Redeemed` (destroyed); it can never be requested or redeemed again. No USDC moves. This is allowed even when the store is frozen, so a store that missed a buy-out can still hand over a rug.
 
@@ -389,6 +391,9 @@ Events use the Soroban `#[contractevent]` macro, so their types are part of the 
 | 19 | `BuyoutWindowClosed` | `store_buyout` called at or after `end_at + buyout_window_seconds`. |
 | 20 | `BuyoutWindowOpen` | `claim_rug` called before `end_at + buyout_window_seconds`. |
 | 21 | `InvalidState` | Internal state invariant failed (for example, a rug/loan status mismatch). |
+| 22 | `WeaverIsStore` | `mint_rug` was asked to give the certificate to a registered store. |
+| 23 | `StoreCannotBorrow` | `request_loan` was called by a registered store. |
+| 24 | `InvestorIsParty` | `fund_loan` was called by the loan’s weaver or the loan’s store. |
 
 ## Guarantees covered by tests
 
@@ -414,6 +419,13 @@ Milestone 2:
 - `repay` remains available through the buy-out window and is rejected with `LoanSettled` after a buy-out or claim.
 - A store may buy out while frozen; a frozen store can still redeem a rug.
 
+Role-safety checks:
+- `mint_rug` rejects the minting store or any other registered store as the weaver.
+- `request_loan` rejects a registered store as the borrower, whether it bought the rug out or claimed another store’s rug.
+- `fund_loan` rejects the loan’s weaver and the loan’s store as the investor; a different store and the admin can fund.
+- Refused role checks leave store principal, rug status, loan state and USDC balances unchanged.
+- A store holding a rug it bought out can redeem it with its own signature alone.
+
 ## Testnet deployment
 
 Deployed and exercised on Stellar Testnet on 2026-11-12.
@@ -421,7 +433,9 @@ Deployed and exercised on Stellar Testnet on 2026-11-12.
 | Item | Value |
 |---|---|
 | Network | `testnet` |
-| Contract ID | `CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG` |
+| Contract ID | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
+| Deploy ledger | `5,695,308` |
+| Deploy transaction | `42c3d3962232ab5b2cf1a4ae0170ba4d443873973acf103feb93ee3be5c654a0` |
 | USDC SAC address | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | USDC classic asset | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 | USDC issuer | `GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
@@ -451,7 +465,7 @@ Public deployment data:
 - `docs/testnet-deployment.json` — contract, USDC, public keys, parameters, transaction hashes
 - `docs/testnet-demo-results.json` — exact balance deltas and final loan/rug state for the repay, buy-out, and claim scenarios
 - `docs/testnet-demo.md` — deployment/demo runbook, script commands, and the current public testnet addresses
-- `https://stellar.expert/explorer/testnet/contract/CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG`
+- `https://stellar.expert/explorer/testnet/contract/CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR`
 
 Secret keys are **not** in this repository. The demo identities live in the Stellar CLI config directory `~/.rugdealer-demo/config` (created by `scripts/testnet.py`). Only public keys are recorded here.
 

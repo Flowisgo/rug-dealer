@@ -67,7 +67,7 @@ python scripts/testnet.py status
 5. Builds `target/wasm32v1-none/release/rugdealer.wasm`.
 6. Deploys RugDealer with all Money Rules as constructor parameters.
 7. Registers both stores with the configured USDC principal limit.
-8. Writes `docs/testnet-deployment.json` with public keys, IDs, parameters, and transaction hashes.
+8. Writes `docs/testnet-deployment.json` with public keys, IDs, parameters, deploy transaction hash, deploy ledger, and transaction hashes.
 
 A second `deploy` creates a new RugDealer contract with the same accounts. This resets all per-contract store and rug state, including frozen flags.
 
@@ -93,7 +93,8 @@ Notes:
 
 | Item | Value |
 |---|---|
-| Contract | `CB54ULGYOA6LLKYGRFGBA5FVCH3WH6B4YVGAOEMTDKHNBXCPZ4XOQFWG` |
+| Contract | `CB5KLLH5IEEY4WCHKXNQ7WHTRPLXQMWPPLAH26AUD4FVNEI2RPCOKOVR` |
+| Deploy ledger | `5,695,308` |
 | USDC SAC | `CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM` |
 | USDC asset | `USDC:GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY` |
 | Admin / fee recipient | `GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ` |

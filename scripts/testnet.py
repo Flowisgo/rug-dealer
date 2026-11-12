@@ -205,6 +205,18 @@ def horizon_account(address: str) -> dict[str, Any] | None:
         raise
 
 
+def transaction_ledger(tx_hash: str) -> int:
+    for attempt in range(15):
+        try:
+            tx = http_json(f"{HORIZON}/transactions/{tx_hash}")
+            return int(tx["ledger"])
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404 or attempt == 14:
+                raise
+            time.sleep(1)
+    raise RuntimeError(f"transaction {tx_hash} not found on Horizon")
+
+
 def wait_for_account(address: str) -> None:
     for _ in range(20):
         if horizon_account(address):
@@ -433,10 +445,19 @@ def deploy(args: argparse.Namespace) -> None:
             label=f"register-{role}",
         )
 
+    deploy_entry = next(
+        (entry for entry in reversed(TX_LOG) if entry["action"] == "deploy-contract"),
+        None,
+    )
+    deploy_hash = deploy_entry["hashes"][-1] if deploy_entry and deploy_entry["hashes"] else None
+    deploy_ledger = transaction_ledger(deploy_hash) if deploy_hash else None
+
     manifest = {
         "network": "testnet",
         "deployed_at": utc_now(),
         "contract": contract,
+        "deploy_tx_hash": deploy_hash,
+        "deploy_ledger": deploy_ledger,
         "usdc": usdc,
         "usdc_asset": asset,
         "usdc_issuer": issuer,
@@ -458,6 +479,7 @@ def deploy(args: argparse.Namespace) -> None:
 
     print("\nDeployment complete")
     print(f"  contract:    {contract}")
+    print(f"  deploy ledger: {deploy_ledger}")
     print(f"  USDC SAC:    {usdc}")
     print(f"  USDC asset:  {asset}")
     for role in ROLES:

@@ -970,6 +970,191 @@ fn store_buyout_allowed_while_store_frozen() {
 }
 
 #[test]
+fn mint_rug_rejects_registered_stores_as_weaver() {
+    let test = TestEnv::new();
+    let client = test.client();
+    let store2 = Address::generate(&test.env);
+    client.register_store(&store2, &(1_000 * USDC));
+
+    let store_before = client.get_store(&test.store);
+    let next_before = client.next_rug_id();
+
+    assert_eq!(
+        contract_error(client.try_mint_rug(
+            &test.store,
+            &test.store,
+            &String::from_str(&test.env, "Self mint"),
+            &(100 * USDC),
+        )),
+        Error::WeaverIsStore
+    );
+    assert_eq!(
+        contract_error(client.try_mint_rug(
+            &test.store,
+            &store2,
+            &String::from_str(&test.env, "Other store"),
+            &(100 * USDC),
+        )),
+        Error::WeaverIsStore
+    );
+
+    assert_eq!(client.next_rug_id(), next_before);
+    assert_eq!(client.get_store(&test.store), store_before);
+    assert_eq!(
+        contract_error(client.try_get_rug(&next_before)),
+        Error::RugNotFound
+    );
+
+    let ordinary = Address::generate(&test.env);
+    let rug_id = client.mint_rug(
+        &test.store,
+        &ordinary,
+        &String::from_str(&test.env, "Ordinary holder"),
+        &(100 * USDC),
+    );
+    assert_eq!(rug_id, next_before);
+    assert_eq!(client.get_rug(&rug_id).owner, ordinary);
+}
+
+#[test]
+fn store_cannot_borrow_a_rug_it_bought_out() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+    test.client().store_buyout(&loan_id);
+
+    let store_before = test.client().get_store(&test.store);
+    let rug_before = test.client().get_rug(&test.rug_id);
+    let next_before = test.client().next_loan_id();
+    assert_eq!(rug_before.owner, test.store);
+    assert_eq!(rug_before.status, RugStatus::Free);
+
+    assert_eq!(
+        contract_error(
+            test.client()
+                .try_request_loan(&test.store, &test.rug_id, &6)
+        ),
+        Error::StoreCannotBorrow
+    );
+
+    assert_eq!(test.client().get_store(&test.store), store_before);
+    assert_eq!(test.client().get_rug(&test.rug_id), rug_before);
+    assert_eq!(test.client().next_loan_id(), next_before);
+    assert_eq!(
+        test.client().get_loan(&loan_id).status,
+        LoanStatus::BoughtOut
+    );
+}
+
+#[test]
+fn store_cannot_borrow_a_rug_claimed_from_another_store() {
+    let test = TestEnv::new();
+    let store2 = Address::generate(&test.env);
+    test.client().register_store(&store2, &(1_000 * USDC));
+    test.mint_usdc(&store2, 10_000 * USDC);
+
+    let loan_id = test.request(test.rug_id, 6);
+    test.client().fund_loan(&store2, &loan_id);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    let config = test.client().get_config();
+    test.set_time(end_at + config.buyout_window_seconds);
+    test.client().claim_rug(&loan_id);
+
+    let store_before = test.client().get_store(&store2);
+    let rug_before = test.client().get_rug(&test.rug_id);
+    let next_before = test.client().next_loan_id();
+    assert_eq!(rug_before.owner, store2);
+    assert_eq!(rug_before.status, RugStatus::Free);
+
+    assert_eq!(
+        contract_error(test.client().try_request_loan(&store2, &test.rug_id, &6)),
+        Error::StoreCannotBorrow
+    );
+
+    assert_eq!(test.client().get_store(&store2), store_before);
+    assert_eq!(test.client().get_rug(&test.rug_id), rug_before);
+    assert_eq!(test.client().next_loan_id(), next_before);
+}
+
+#[test]
+fn fund_loan_rejects_the_weaver_and_the_store_as_investor() {
+    let test = TestEnv::new();
+    let loan_id = test.request(test.rug_id, 6);
+
+    let store_before = test.client().get_store(&test.store);
+    let loan_before = test.client().get_loan(&loan_id);
+    let rug_before = test.client().get_rug(&test.rug_id);
+    let weaver_before = test.balance(&test.weaver);
+    let store_balance_before = test.balance(&test.store);
+    let contract_before = test.balance(&test.contract);
+
+    assert_eq!(
+        contract_error(test.client().try_fund_loan(&test.weaver, &loan_id)),
+        Error::InvestorIsParty
+    );
+    assert_eq!(
+        contract_error(test.client().try_fund_loan(&test.store, &loan_id)),
+        Error::InvestorIsParty
+    );
+
+    assert_eq!(test.client().get_store(&test.store), store_before);
+    assert_eq!(test.client().get_loan(&loan_id), loan_before);
+    assert_eq!(test.client().get_rug(&test.rug_id), rug_before);
+    assert_eq!(test.balance(&test.weaver), weaver_before);
+    assert_eq!(test.balance(&test.store), store_balance_before);
+    assert_eq!(test.balance(&test.contract), contract_before);
+}
+
+#[test]
+fn fund_loan_allows_a_different_store_and_the_admin() {
+    let test = TestEnv::with_config(2_000 * USDC, 1500, 100, 25, 12, 60, 60);
+    let store2 = Address::generate(&test.env);
+    test.client().register_store(&store2, &(2_000 * USDC));
+    test.mint_usdc(&store2, 1_000 * USDC);
+    test.mint_usdc(&test.admin, 1_000 * USDC);
+
+    let first = test.request(test.rug_id, 6);
+    test.client().fund_loan(&store2, &first);
+    assert_eq!(test.client().get_loan(&first).status, LoanStatus::Funded);
+
+    let second_rug = test.mint_rug(500 * USDC);
+    let second = test.request(second_rug, 6);
+    test.client().fund_loan(&test.admin, &second);
+    assert_eq!(test.client().get_loan(&second).status, LoanStatus::Funded);
+}
+
+#[test]
+fn store_can_redeem_a_rug_it_bought_out_as_the_only_signer() {
+    let test = TestEnv::new();
+    let loan_id = test.request_and_fund(test.rug_id, 6);
+    test.mint_usdc(&test.store, 1_000 * USDC);
+    let end_at = test.client().get_loan(&loan_id).end_at.unwrap();
+    test.set_time(end_at);
+    test.client().store_buyout(&loan_id);
+    assert_eq!(test.client().get_rug(&test.rug_id).owner, test.store);
+
+    test.env.set_auths(&[]);
+    let invoke = MockAuthInvoke {
+        contract: &test.contract,
+        fn_name: "redeem",
+        args: (&test.store, test.rug_id).into_val(&test.env),
+        sub_invokes: &[],
+    };
+    test.env.mock_auths(&[MockAuth {
+        address: &test.store,
+        invoke: &invoke,
+    }]);
+
+    test.client().redeem(&test.store, &test.rug_id);
+    assert_eq!(
+        test.client().get_rug(&test.rug_id).status,
+        RugStatus::Redeemed
+    );
+}
+
+#[test]
 fn emits_cancelled_and_redeemed_events() {
     let test = TestEnv::new();
     let client = test.client();
