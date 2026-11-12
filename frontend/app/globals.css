@@ -511,6 +511,12 @@ textarea.input {
 a.ticket-no:hover {
   text-decoration: underline;
 }
+/* Long status labels wrap inside the stub instead of crossing the tear line. */
+.ticket-stub .tag {
+  white-space: normal;
+  max-width: 100%;
+  text-align: left;
+}
 .ticket-body {
   padding: 16px;
   display: grid;

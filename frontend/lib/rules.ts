@@ -33,6 +33,8 @@ export function rugLabel(rug: Rug, viewer?: string): { text: string; tone: Tone 
   if (rug.status === "Redeemed") return { text: "Collected", tone: "done" };
   if (rug.status === "Requested") return { text: "Waiting for an investor", tone: "waiting" };
   if (rug.status === "Locked") return { text: "Held as security", tone: "secured" };
+  // Only a buy-out leaves a store holding its own certificate.
+  if (rug.owner === rug.store) return { text: "Bought by the store", tone: "plain" };
   if (viewer && rug.owner !== viewer) return { text: "Passed to a new holder", tone: "done" };
   return { text: "At the store, free to borrow", tone: "plain" };
 }

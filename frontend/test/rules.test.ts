@@ -45,6 +45,10 @@ describe("rug labels", () => {
     expect(rugLabel(rug("Locked"), "W").text).toBe("Held as security");
     expect(rugLabel(rug("Redeemed"), "W").text).toBe("Collected");
   });
+  it("never calls a store's own bought rug free to borrow", () => {
+    expect(rugLabel(rug("Free", "S")).text).toBe("Bought by the store");
+    expect(rugLabel(rug("Free", "S"), "S").text).toBe("Bought by the store");
+  });
   it("finds the open loan on a rug", () => {
     const loans = [loan({ id: 1n, status: "Repaid" }), loan({ id: 2n, status: "Funded" })];
     expect(openLoanFor(1n, loans)?.id).toBe(2n);
