@@ -168,7 +168,17 @@ cd frontend
 npx vercel deploy --prod
 ```
 
-To deploy from GitHub instead, import the repository on Vercel and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed. After a contract redeploy, update `frontend/lib/deployment.ts` with the new contract id and deploy ledger, then deploy again.
+To deploy from GitHub instead, import the repository on Vercel and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed.
+
+After a contract redeploy (`python scripts/testnet.py deploy`), point the app at it before deploying the app again:
+
+```bash
+cd frontend
+npm run sync-deployment
+npm run smoke
+```
+
+`sync-deployment` copies everything the app needs from `docs/testnet-deployment.json` into `frontend/lib/deployment.json`: the contract, its deploy ledger, the test USDC contract and issuer, and every demo account. A fresh deploy on a new machine creates new accounts and a new test USDC, so all of these can change, not just the contract. `smoke` then checks the app against the live contract, read-only. Commit `lib/deployment.json` with the rest.
 
 ## Repository layout
 

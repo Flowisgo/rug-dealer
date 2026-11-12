@@ -5,7 +5,7 @@ import { LookingAs, NoViewer, PageHead, useViewer } from "@/components/shell";
 import { MoneyBlock } from "@/components/money";
 import { ActionButton, Empty, ErrorBox, KV, Loading, Party, Section, Tag } from "@/components/ui";
 import { addr, i128, type Store } from "@/lib/contract";
-import { formatLocal, parseUsdc, usdcLabel } from "@/lib/money";
+import { amountProblem, formatLocal, parseUsdc, usdcLabel } from "@/lib/money";
 import { invoke } from "@/lib/tx";
 import { useLedger, type Ledger } from "@/lib/use-ledger";
 
@@ -102,6 +102,7 @@ function StoreCard({ store, admin, reason }: { store: Store; admin: string; reas
             <span>New limit (USDC)</span>
             <input className="input mono" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="5000" />
             {units !== null && limit !== "" && <span className="hint mono">≈ {formatLocal(units)} TRY</span>}
+            {units === null && limit !== "" && <span className="error-text">{amountProblem(limit)}</span>}
           </label>
           <ActionButton
             label="Change limit"
@@ -165,6 +166,7 @@ function ApproveForm({ admin, known }: { admin: string; known: string[] }) {
         <span>Limit: most it may have lent out at once (USDC)</span>
         <input className="input mono" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
         {units !== null && <span className="hint mono">≈ {formatLocal(units)} TRY</span>}
+        {units === null && limit !== "" && <span className="error-text">{amountProblem(limit)}</span>}
       </label>
       <ActionButton
         primary

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { xdr } from "@stellar/stellar-sdk";
 import { ACCOUNTS } from "../lib/deployment";
-import { decodeEvent, decodeNative, describe as sentence, plain, type AppEvent } from "../lib/events";
+import { decodeEvent, decodeNative, describe as sentence, heldPayoutLoans, heldPayoutTxs, plain, type AppEvent } from "../lib/events";
 import { formatUsdc } from "../lib/money";
 import { partyName } from "../lib/names";
 import fixtures from "./testnet-events.json";
@@ -27,6 +27,28 @@ describe("held investor payouts", () => {
     expect(text(e)).toBe(
       "Deniz the investor's wallet couldn't take the payout of 645.00 USDC, so the contract is holding it for them to withdraw. The loan is closed.",
     );
+  });
+  it("doesn't say the investor 'got back' a payout the contract had to hold", () => {
+    const tx = "cd".repeat(32);
+    const m = { ...META, txHash: tx };
+    const repaid = decodeNative(
+      ["loan_repaid", 7n],
+      { rug_id: 4n, weaver: ACCOUNTS.weaver, investor: ACCOUNTS.investor, principal: 6_000_000_000n, interest: 450_000_000n },
+      m,
+    );
+    const credited = decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 7n, amount: 6_450_000_000n }, m);
+    const held = heldPayoutTxs([repaid, credited]);
+    expect(plain(sentence(repaid, held), partyName, (u) => `${formatUsdc(u)} USDC`)).toBe(
+      "Ayşe the weaver repaid 600.00 USDC on rug No. 0004. Deniz the investor's wallet couldn't take the 645.00 USDC, so the contract is holding it until they withdraw it.",
+    );
+    expect(text(repaid)).toMatch(/got back 645.00 USDC/);
+    expect(heldPayoutLoans([repaid, credited])).toEqual(new Set([7n]));
+  });
+  it("says a claim's interest is held when it is", () => {
+    const m = { ...META, txHash: "ef".repeat(32) };
+    const claimed = decodeNative(["rug_claimed", 9n], { rug_id: 5n, investor: ACCOUNTS.investor, store: ACCOUNTS.store2, interest: 75_000_000n }, m);
+    const held = heldPayoutTxs([decodeNative(["investor_credited", ACCOUNTS.investor], { loan_id: 9n, amount: 75_000_000n }, m)]);
+    expect(plain(sentence(claimed, held), partyName, (u) => `${formatUsdc(u)} USDC`)).toMatch(/interest is held by the contract until they withdraw it/);
   });
   it("decodes credit_withdrawn", () => {
     const e = decodeNative(["credit_withdrawn", ACCOUNTS.investor], { amount: 6_450_000_000n }, META);

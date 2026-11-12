@@ -7,7 +7,7 @@ import { Sentence, when, whenSec } from "@/components/sentence";
 import { MoneyBlock } from "@/components/money";
 import { Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
-import { describe, rugIdOf, type AppEvent } from "@/lib/events";
+import { describe, heldPayoutTxs, rugIdOf, type AppEvent } from "@/lib/events";
 import { RUG_PATTERN_NOTE } from "@/lib/kilim";
 import { rugNo } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
@@ -54,12 +54,21 @@ export default function RugPage() {
   const last = latestLoanFor(id, data.loans);
   const phase = open ? loanPhase(open, now, win) : null;
 
-  // Events for this rug, plus the store freeze that a claim on it caused.
+  // Events for this rug, plus the store freeze that a claim on it caused and
+  // any payout the contract had to hold when one of its loans closed.
   const claimTx = new Set(data.events.filter((e) => e.kind === "rug_claimed" && e.rugId === id).map((e) => e.txHash));
+  const loanIds = new Set(loans.map((l) => l.id));
+  const held = heldPayoutTxs(data.events);
+  const after = (e: AppEvent) => Number(e.kind === "store_frozen" || e.kind === "investor_credited");
   const events = data.events
-    .filter((e) => rugIdOf(e) === id || (e.kind === "store_frozen" && claimTx.has(e.txHash)))
-    // The freeze is a consequence of the claim in the same transaction: show it after.
-    .sort((a, b) => a.ledger - b.ledger || Number(a.kind === "store_frozen") - Number(b.kind === "store_frozen"));
+    .filter(
+      (e) =>
+        rugIdOf(e) === id ||
+        (e.kind === "store_frozen" && claimTx.has(e.txHash)) ||
+        (e.kind === "investor_credited" && loanIds.has(e.loanId)),
+    )
+    // Consequences in the same transaction (freeze, held payout) come after the settlement.
+    .sort((a, b) => a.ledger - b.ledger || after(a) - after(b));
 
   let tag: { text: string; tone: Tone } = rugLabel(rug);
   if (phase === "buyout" || phase === "claimable") tag = { text: "Overdue", tone: "late" };
@@ -115,7 +124,7 @@ export default function RugPage() {
             {events.map((e) => (
               <li key={e.id} className={key(e) ? "key" : undefined}>
                 <time dateTime={e.at}>{when(e.at)}</time>
-                <Sentence parts={describe(e)} />{" "}
+                <Sentence parts={describe(e, held)} />{" "}
                 <a className="small" href={txUrl(e.txHash)} target="_blank" rel="noreferrer">
                   Transaction
                 </a>

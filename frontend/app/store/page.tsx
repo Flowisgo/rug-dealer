@@ -9,7 +9,7 @@ import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Part
 import { addr, i128, str, type Loan, type Rug, type Store } from "@/lib/contract";
 import { ACCOUNTS, DEMO_NAMES } from "@/lib/deployment";
 import { redeemOwnRug } from "@/lib/handover";
-import { formatLocal, parseUsdc, quoteLocally, rugNo } from "@/lib/money";
+import { amountProblem, formatLocal, parseUsdc, quoteLocally, rugNo } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, mintBlock, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
 import { useLedger, useNow, type Ledger } from "@/lib/use-ledger";
@@ -336,7 +336,7 @@ function IssueForm({ store, data }: { store: Store; data: Ledger }) {
             {priceOk ? (
               <span className="mono">â‰ˆ {formatLocal(units!)} TRY</span>
             ) : (
-              <span className="error-text">Enter a USDC amount above zero, up to 7 decimals.</span>
+              <span className="error-text">{units === 0n ? "Enter a price above zero." : amountProblem(price)}</span>
             )}{" "}
             What you'd normally pay for this rug. You must buy it at this price if the loan isn't repaid.
           </span>

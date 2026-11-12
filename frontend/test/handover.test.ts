@@ -4,7 +4,7 @@ import { decodeNative, findRedeem, type AppEvent } from "../lib/events";
 import { CONTRACT_ID } from "../lib/deployment";
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { checkHandover, decodeHandover, encodeHandover, forgetHandedOver, handoverKey, isExpired, type Handover } from "../lib/handover";
-import { pendingOutcome } from "../lib/tx";
+import { pendingOutcome, runExclusive, withoutPending, withPending } from "../lib/tx";
 
 const STORE = "GSTORE";
 const WEAVER = "GWEAVER";
@@ -68,6 +68,32 @@ describe("decoding a hand-over code", () => {
     expect(() => decodeHandover(enc(bad))).toThrow(/isn't valid/);
   });
   it("rejects text that isn't a code at all", () => expect(() => decodeHandover("not a code")).toThrow(/isn't valid/));
+});
+
+describe("pending transactions are kept per transaction", () => {
+  const p = (hash: string) => ({ hash: hash.repeat(64), label: hash, source: "G", at: 1 });
+  it("adding one never overwrites another", () => {
+    expect(withPending([p("a")], p("b")).map((x) => x.label)).toEqual(["a", "b"]);
+    expect(withPending([p("a")], p("a"))).toHaveLength(1);
+  });
+  it("confirming one clears only that one", () => {
+    expect(withoutPending([p("a"), p("b")], "a".repeat(64)).map((x) => x.label)).toEqual(["b"]);
+  });
+});
+
+describe("one action at a time in a tab", () => {
+  it("refuses a second action while the first is still running", async () => {
+    let release!: () => void;
+    const first = runExclusive("Lend 600.00 USDC", () => new Promise<string>((r) => (release = () => r("done"))));
+    await expect(runExclusive("Repay 600.00 USDC", async () => "never")).rejects.toThrow(/Finish "Lend 600.00 USDC" first/);
+    release();
+    await expect(first).resolves.toBe("done");
+    await expect(runExclusive("Repay 600.00 USDC", async () => "ok")).resolves.toBe("ok");
+  });
+  it("frees the lock even when the action fails", async () => {
+    await expect(runExclusive("a", async () => Promise.reject(new Error("declined")))).rejects.toThrow("declined");
+    await expect(runExclusive("b", async () => "ok")).resolves.toBe("ok");
+  });
 });
 
 describe("a pending transaction left by an earlier page load", () => {

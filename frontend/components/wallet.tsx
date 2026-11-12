@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { usdcBalance } from "@/lib/contract";
+import { usdcBalance, type BalanceState } from "@/lib/contract";
 import { DEMO_NAMES, FRIENDBOT_URL } from "@/lib/deployment";
 import { messageOf } from "@/lib/errors";
 import { addUsdcTrustline } from "@/lib/tx";
@@ -11,7 +11,7 @@ type Wallet = {
   address: string | null;
   installed: boolean | null;
   testnet: boolean | null;
-  balance: bigint | null | undefined; // undefined = loading, null = can't hold USDC
+  balance: BalanceState; // undefined = loading, null = can't hold USDC, "unavailable" = couldn't read
   connecting: boolean;
   error: string | null;
   connect: () => Promise<void>;
@@ -26,14 +26,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [testnet, setTestnet] = useState<boolean | null>(null);
-  const [balance, setBalance] = useState<bigint | null | undefined>(undefined);
+  const [balance, setBalance] = useState<BalanceState>(undefined);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const readBalance = useCallback((a: string | null) => {
     if (!a) return setBalance(undefined);
     setBalance(undefined);
-    usdcBalance(a).then(setBalance, () => setBalance(null));
+    usdcBalance(a).then(setBalance, () => setBalance("unavailable"));
   }, []);
 
   // Restore a previous connection and follow account switches in Varial.
@@ -160,6 +160,8 @@ export function WalletChip() {
             <span className="muted">…</span>
           ) : w.balance === null ? (
             <span className="muted">No USDC yet</span>
+          ) : w.balance === "unavailable" ? (
+            <span className="muted">Balance unavailable</span>
           ) : (
             <MoneyBlock units={w.balance} />
           )}

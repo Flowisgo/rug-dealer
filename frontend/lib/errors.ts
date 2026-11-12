@@ -49,20 +49,42 @@ export class AppError extends Error {
   }
 }
 
-const ERROR_RE = /contract:(C[A-Z2-7]{55}),\s*topics:\[error,\s*Error\(Contract,\s*#(\d+)\)\]/g;
+const CONTRACT_ADDR = /C[A-Z2-7]{55}/g;
+const CODE = /Error\(Contract,\s*#(\d+)\)/;
+
+/**
+ * Contract error codes attributed to the contract named before them: the text
+ * is cut at every contract address, and each piece's first error code belongs
+ * to the address that starts it. Works whatever the exact diagnostic layout.
+ */
+export function attributedErrors(raw: string): { contract: string; code: number }[] {
+  const marks = [...raw.matchAll(CONTRACT_ADDR)].map((m) => ({ contract: m[0], at: m.index ?? 0 }));
+  return marks.flatMap((m, i) => {
+    const piece = raw.slice(m.at, i + 1 < marks.length ? marks[i + 1].at : raw.length);
+    const code = CODE.exec(piece);
+    return code ? [{ contract: m.contract, code: Number(code[1]) }] : [];
+  });
+}
+
+/** Words that point at the USDC token rather than RugDealer. */
+const TOKEN_HINT = /balance|insufficient|trustline|trust line|authori[sz]ed|allowance/i;
 
 /** Turn a simulation or transaction error string into a plain message. */
 export function explainError(raw: string): AppError {
-  const hits = [...raw.matchAll(ERROR_RE)].map((m) => ({ contract: m[1], code: Number(m[2]) }));
+  const hits = attributedErrors(raw);
   const usdc = hits.find((h) => h.contract === USDC_ID);
   if (usdc && USDC_ERRORS[usdc.code]) return new AppError(USDC_ERRORS[usdc.code], usdc.code, "usdc");
   const ours = hits.find((h) => h.contract === CONTRACT_ID);
   if (ours && CONTRACT_ERRORS[ours.code]) return new AppError(CONTRACT_ERRORS[ours.code].message, ours.code, "rugdealer");
-  // Without diagnostic events, the bare code is ours.
-  const bare = /Error\(Contract,\s*#(\d+)\)/.exec(raw);
-  if (!hits.length && bare && CONTRACT_ERRORS[Number(bare[1])]) {
+  // An error code with no contract named next to it. A failing token call
+  // inside our contract surfaces with the token's code, so only read it as
+  // ours when nothing points at the token.
+  const bare = CODE.exec(raw);
+  if (bare) {
     const code = Number(bare[1]);
-    return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
+    const tokenish = raw.includes(USDC_ID) || TOKEN_HINT.test(raw);
+    if (tokenish && USDC_ERRORS[code]) return new AppError(USDC_ERRORS[code], code, "usdc");
+    if (!tokenish && !hits.length && CONTRACT_ERRORS[code]) return new AppError(CONTRACT_ERRORS[code].message, code, "rugdealer");
   }
   if (/Error\(Auth,/.test(raw))
     return new AppError("This needs a signature from a different account. Switch accounts in Varial.", undefined, "auth");

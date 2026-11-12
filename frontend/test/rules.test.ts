@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Loan, Rug } from "../lib/contract";
 import { CONTRACT_ID, USDC_ID } from "../lib/deployment";
-import { CONTRACT_ERRORS, explainError } from "../lib/errors";
+import { attributedErrors, CONTRACT_ERRORS, explainError } from "../lib/errors";
 import { decodeHandover, encodeHandover } from "../lib/handover";
 import { borrowBlock, clock, investorTotals, lendBlock, loanPhase, mintBlock, openLoanFor, ROLE_TEXT, rugLabel } from "../lib/rules";
 
@@ -134,6 +134,28 @@ describe("contract errors", () => {
   });
   it("explains auth failures", () => {
     expect(explainError("HostError: Error(Auth, InvalidAction)").source).toBe("auth");
+  });
+  it("finds the token's error whatever the diagnostic layout", () => {
+    // Spacing and field order differ from the format the old parser expected.
+    const raw = `HostError: Error(Contract, #10)\nEvent log:\n 0: contract: ${USDC_ID} topics: [ "error", Error(Contract, #10) ] data: "balance is not sufficient to spend"`;
+    const e = explainError(raw);
+    expect(e.source).toBe("usdc");
+    expect(e.message).toBe("There isn't enough test USDC in the paying wallet.");
+  });
+  it("never reads a token failure as 'There is no rug with that number'", () => {
+    const e = explainError(`HostError: Error(Contract, #10) "balance is not sufficient to spend"`);
+    expect(e.source).toBe("usdc");
+    expect(e.message).not.toMatch(/no rug/);
+  });
+  it("still reads a bare code as RugDealer's when nothing points at the token", () => {
+    expect(explainError("HostError: Error(Contract, #10)").message).toBe("There is no rug with that number.");
+  });
+  it("attributes each code to the contract named before it", () => {
+    const raw = `x contract:${CONTRACT_ID} ... Error(Contract, #13) ... contract:${USDC_ID} ... Error(Contract, #10)`;
+    expect(attributedErrors(raw)).toEqual([
+      { contract: CONTRACT_ID, code: 13 },
+      { contract: USDC_ID, code: 10 },
+    ]);
   });
 });
 

@@ -96,12 +96,32 @@ export function decodeEvent(topic: xdr.ScVal[], value: xdr.ScVal, meta: EventMet
 /** Pieces of a sentence: plain text, an amount, a party, or a rug number. */
 export type Part = string | { amount: bigint } | { party: string; role?: PartyRole } | { rug: bigint };
 
-/** One plain sentence per event. */
-export function describe(e: AppEvent): Part[] {
+/** Transactions in which the investor's payout was held by the contract
+ * (an investor_credited event in the same transaction as the settlement). */
+export function heldPayoutTxs(events: AppEvent[]): Set<string> {
+  return new Set(events.filter((e) => e.kind === "investor_credited").map((e) => e.txHash));
+}
+
+/** Loans whose investor payout was held rather than delivered. */
+export function heldPayoutLoans(events: AppEvent[]): Set<bigint> {
+  return new Set(events.flatMap((e) => (e.kind === "investor_credited" ? [e.loanId] : [])));
+}
+
+/**
+ * One plain sentence per event. Pass `held` (from heldPayoutTxs) so a
+ * settlement whose payout the contract had to hold doesn't claim the
+ * investor "got back" money they haven't received.
+ */
+export function describe(e: AppEvent, held: Set<string> = new Set()): Part[] {
+  const isHeld = held.has(e.txHash);
   const amt = (amount: bigint) => ({ amount });
   const who = (party: string) => ({ party });
   const shop = (party: string) => ({ party, role: "store" as const });
   const rug = (id: bigint) => ({ rug: id });
+  const paidOrHeld = (investor: string, amount: bigint): Part[] =>
+    isHeld
+      ? [who(investor), "'s wallet couldn't take the ", amt(amount), ", so the contract is holding it until they withdraw it."]
+      : [who(investor), " got back ", amt(amount), "."];
   switch (e.kind) {
     case "store_registered":
       return ["The platform approved ", shop(e.store), " as a store, with a limit of ", amt(e.limit), "."];
@@ -120,11 +140,38 @@ export function describe(e: AppEvent): Part[] {
     case "loan_funded":
       return [who(e.investor), " lent ", amt(e.principal), " on rug ", rug(e.rugId), ". The weaver received ", amt(e.weaverPayout), "."];
     case "loan_repaid":
-      return [who(e.weaver), " repaid ", amt(e.principal), " on rug ", rug(e.rugId), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
+      return [
+        who(e.weaver),
+        " repaid ",
+        amt(e.principal),
+        " on rug ",
+        rug(e.rugId),
+        ". ",
+        ...paidOrHeld(e.investor, e.principal + e.interest),
+      ];
     case "store_bought_out":
-      return [shop(e.store), " bought rug ", rug(e.rugId), " for ", amt(e.principal), ". ", who(e.investor), " got back ", amt(e.principal + e.interest), "."];
+      return [
+        shop(e.store),
+        " bought rug ",
+        rug(e.rugId),
+        " for ",
+        amt(e.principal),
+        ". ",
+        ...paidOrHeld(e.investor, e.principal + e.interest),
+      ];
     case "rug_claimed":
-      return [who(e.investor), " took rug ", rug(e.rugId), " and ", amt(e.interest), " interest after ", shop(e.store), " missed the buy-out."];
+      return isHeld
+        ? [
+            who(e.investor),
+            " took rug ",
+            rug(e.rugId),
+            " after ",
+            shop(e.store),
+            " missed the buy-out. The ",
+            amt(e.interest),
+            " interest is held by the contract until they withdraw it.",
+          ]
+        : [who(e.investor), " took rug ", rug(e.rugId), " and ", amt(e.interest), " interest after ", shop(e.store), " missed the buy-out."];
     case "rug_redeemed":
       // A store redeeming a rug it holds itself can only follow its own buy-out.
       return e.holder === e.store

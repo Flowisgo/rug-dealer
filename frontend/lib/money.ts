@@ -10,16 +10,31 @@ export const LOCAL_CURRENCY = "TRY";
 
 const group = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
+/** Whole part with optional thousands commas in groups of exactly three
+ * ("1,250", "12,000,000"), then an optional dot and decimals. A comma used as a
+ * decimal mark ("6,50") does not match. */
+const AMOUNT = /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d*))?$/;
+
 /** Parse a typed USDC amount ("600", "600.5", "1,250.25") into base units.
  * Returns null for anything that is not a positive-or-zero number with at most
- * 7 decimals. */
+ * 7 decimals, including a comma written as a decimal mark ("6,50"): guessing
+ * would be off by 100x. */
 export function parseUsdc(input: string): bigint | null {
-  const clean = input.trim().replace(/,/g, "");
-  const match = /^(\d+)(?:\.(\d*))?$/.exec(clean);
+  const match = AMOUNT.exec(input.trim());
   if (!match) return null;
-  const [, whole, frac = ""] = match;
+  const [, wholeText, frac = ""] = match;
   if (frac.length > DECIMALS) return null;
-  return BigInt(whole) * UNIT + BigInt(frac.padEnd(DECIMALS, "0") || "0");
+  return BigInt(wholeText.replace(/,/g, "")) * UNIT + BigInt(frac.padEnd(DECIMALS, "0") || "0");
+}
+
+/** Why a typed amount isn't accepted, in plain words; null when it is. */
+export function amountProblem(input: string): string | null {
+  const t = input.trim();
+  if (t === "") return "Enter an amount.";
+  if (parseUsdc(t) !== null) return null;
+  if (/,\d{1,2}$/.test(t) || /^\d+,\d+$/.test(t)) return "Use a dot for decimals, like 6.50. Commas only separate thousands, like 1,250.";
+  if (/\.(\d{8,})$/.test(t)) return "USDC has at most 7 decimals.";
+  return "Enter a USDC amount above zero, like 600 or 1,250.50.";
 }
 
 /** "600.00", "7.50", "0.0000001", "-60.00". At least 2 decimals, at most 7,

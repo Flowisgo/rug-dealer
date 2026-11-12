@@ -69,6 +69,8 @@ function WeaverDesk({ weaver, data }: { weaver: string; data: Ledger }) {
             : `${active.length} of your rugs are at a store.`}{" "}
         {balance === null ? (
           "This wallet can't hold USDC yet."
+        ) : balance === "unavailable" ? (
+          "Your wallet balance couldn't be checked just now."
         ) : balance === undefined ? null : (
           <>
             Your wallet holds <MoneySentence units={balance} />.

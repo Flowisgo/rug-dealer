@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { ACCOUNTS, contractUrl, txUrl } from "@/lib/deployment";
-import { resumePending, type Pending } from "@/lib/tx";
+import { resumePending, type Pending, type PendingStatus } from "@/lib/tx";
 import { refreshLedger } from "@/lib/use-ledger";
 import { StrKey } from "@stellar/stellar-sdk";
 import { Kilim } from "./kilim";
@@ -58,32 +58,34 @@ export function Footer() {
 
 /** If the page was reloaded mid-transaction, say what became of it. */
 function PendingNotice() {
-  const [p, setP] = useState<{ pending: Pending; status: string } | null>(null);
+  const [list, setList] = useState<{ pending: Pending; status: PendingStatus }[]>([]);
   useEffect(() => {
     resumePending()
       .then((r) => {
-        setP(r);
-        if (r?.status === "SUCCESS") void refreshLedger();
+        setList(r);
+        if (r.some((x) => x.status === "SUCCESS")) void refreshLedger();
       })
       .catch(() => {});
   }, []);
-  if (!p) return null;
-  const text =
-    p.status === "SUCCESS"
+  if (list.length === 0) return null;
+  const text = (s: PendingStatus) =>
+    s === "SUCCESS"
       ? "went through."
-      : p.status === "FAILED"
+      : s === "FAILED"
         ? "failed. Nothing changed; you can try again."
-        : p.status === "EXPIRED"
+        : s === "EXPIRED"
           ? "never reached the network, so nothing changed. You can try again."
           : "is still waiting for the network. Refresh in a minute.";
   return (
-    <div style={{ maxWidth: "var(--max)", margin: "12px auto 0", padding: "0 var(--gutter)" }}>
-      <div className={p.status === "FAILED" || p.status === "EXPIRED" ? "notice warn" : "notice"} role="status">
-        Your last action ({p.pending.label}) {text}{" "}
-        <a href={txUrl(p.pending.hash)} target="_blank" rel="noreferrer">
-          Check it
-        </a>
-      </div>
+    <div style={{ maxWidth: "var(--max)", margin: "12px auto 0", padding: "0 var(--gutter)", display: "grid", gap: 8 }}>
+      {list.map(({ pending, status }) => (
+        <div key={pending.hash} className={status === "FAILED" || status === "EXPIRED" ? "notice warn" : "notice"} role="status">
+          Your action ({pending.label}) {text(status)}{" "}
+          <a href={txUrl(pending.hash)} target="_blank" rel="noreferrer">
+            Check it
+          </a>
+        </div>
+      ))}
     </div>
   );
 }

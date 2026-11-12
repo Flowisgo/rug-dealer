@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatLocal, formatUsdc, localLabel, parseUsdc, quoteLocally, rugNo, UNIT, usdcLabel } from "../lib/money";
+import { amountProblem, formatLocal, formatUsdc, localLabel, parseUsdc, quoteLocally, rugNo, UNIT, usdcLabel } from "../lib/money";
 
 const PARAMS = { interest_bps_per_year: 1500, platform_fee_bps: 100, store_fee_bps_per_month: 25 };
 const usdc = (n: number) => BigInt(Math.round(n * 1e7));
@@ -65,6 +65,20 @@ describe("parseUsdc", () => {
   });
   it("rejects anything else", () => {
     for (const bad of ["", "abc", "-5", "1.12345678", "1e3", "1.2.3", ".5"]) expect(parseUsdc(bad)).toBeNull();
+  });
+  it("accepts commas only as thousands separators in groups of three", () => {
+    expect(parseUsdc("1,250")).toBe(12_500_000_000n);
+    expect(parseUsdc("12,000,000.5")).toBe(120_000_005_000_000n);
+  });
+  it("never reads a decimal comma as thousands (6,50 is not 650)", () => {
+    for (const bad of ["6,50", "6,5", "1,25,000", "1,2500", ",500", "1,", "600,00"]) expect(parseUsdc(bad)).toBeNull();
+  });
+  it("explains what's wrong in plain words", () => {
+    expect(amountProblem("600")).toBeNull();
+    expect(amountProblem("6,50")).toMatch(/Use a dot for decimals/);
+    expect(amountProblem("1.123456789")).toMatch(/at most 7 decimals/);
+    expect(amountProblem("abc")).toMatch(/Enter a USDC amount/);
+    expect(amountProblem("")).toBe("Enter an amount.");
   });
 });
 

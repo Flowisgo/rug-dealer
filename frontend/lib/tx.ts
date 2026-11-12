@@ -38,25 +38,60 @@ const safeJson = (v: unknown) => {
 export type Pending = { hash: string; label: string; source: string; at: number };
 export type TxResult = { hash: string; value: unknown };
 
-const PENDING_KEY = `rugdealer:${CONTRACT_ID}:pending`;
+// Sent-but-unconfirmed transactions, kept across reloads. A list keyed by
+// transaction hash: two actions (e.g. in two tabs) never overwrite each
+// other, and confirming one never clears another.
+const PENDING_KEY = `rugdealer:${CONTRACT_ID}:pending-list`;
+/** The single-slot record earlier versions kept; read once and folded in. */
+const LEGACY_KEY = `rugdealer:${CONTRACT_ID}:pending`;
 
-export function loadPending(): Pending | null {
+const isPending = (p: unknown): p is Pending =>
+  !!p && typeof p === "object" && /^[0-9a-f]{64}$/.test(String((p as Pending).hash)) && typeof (p as Pending).at === "number";
+
+/** Pure: the list with `p` added (replacing any record with the same hash). */
+export const withPending = (list: Pending[], p: Pending): Pending[] => [...list.filter((x) => x.hash !== p.hash), p];
+/** Pure: the list without the record for `hash`. */
+export const withoutPending = (list: Pending[], hash: string): Pending[] => list.filter((x) => x.hash !== hash);
+
+export function loadPendingList(): Pending[] {
   try {
-    const p = JSON.parse(localStorage.getItem(PENDING_KEY) || "null") as Pending | null;
-    return p && /^[0-9a-f]{64}$/.test(p.hash) ? p : null;
+    const raw = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]") as unknown;
+    let list = Array.isArray(raw) ? raw.filter(isPending) : [];
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "null") as unknown;
+    if (isPending(legacy)) list = withPending(list, legacy);
+    if (legacy !== null) localStorage.removeItem(LEGACY_KEY);
+    return list;
   } catch {
-    return null;
+    return [];
   }
 }
-function savePending(p: Pending) {
+function writePendingList(list: Pending[]) {
   try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(p));
+    if (list.length) localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    else localStorage.removeItem(PENDING_KEY);
   } catch {}
 }
-export function clearPending() {
+function savePending(p: Pending) {
+  writePendingList(withPending(loadPendingList(), p));
+}
+export function clearPending(hash: string) {
+  writePendingList(withoutPending(loadPendingList(), hash));
+}
+
+// One action at a time in this tab: a second one started while the first is
+// still being signed or confirmed is refused instead of racing it.
+let inFlight: string | null = null;
+
+/** Run `fn` unless another action is already in progress in this tab. */
+export async function runExclusive<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  if (inFlight)
+    throw new AppError(`Finish "${inFlight}" first. One action at a time, so nothing gets lost.`, undefined, "wallet");
+  inFlight = label;
   try {
-    localStorage.removeItem(PENDING_KEY);
-  } catch {}
+    return await fn();
+  } finally {
+    inFlight = null;
+  }
 }
 
 /** Poll a sent transaction until it succeeds, fails, or we give up. */
@@ -82,23 +117,29 @@ export function pendingOutcome(networkStatus: string, ageMs: number): { status: 
   return { status: "NOT_FOUND", clear: false };
 }
 
-/** Look up a pending transaction left by an earlier page load. */
-export async function resumePending(): Promise<{ pending: Pending; status: PendingStatus } | null> {
-  const p = loadPending();
-  if (!p) return null;
-  const r = await server().getTransaction(p.hash);
-  const o = pendingOutcome(r.status, Date.now() - p.at);
-  if (o.clear) clearPending();
-  return { pending: p, status: o.status };
+/** Look up every pending transaction left by an earlier page load (or another
+ * tab). Records that landed, failed or expired are cleared, each by its hash. */
+export async function resumePending(): Promise<{ pending: Pending; status: PendingStatus }[]> {
+  const out: { pending: Pending; status: PendingStatus }[] = [];
+  for (const p of loadPendingList()) {
+    const r = await server().getTransaction(p.hash);
+    const o = pendingOutcome(r.status, Date.now() - p.at);
+    if (o.clear) clearPending(p.hash);
+    out.push({ pending: p, status: o.status });
+  }
+  return out;
 }
 
-/** Refuse to start a new transaction while an earlier one may still land:
- * one pending record at a time, never overwritten. */
+/** Refuse to start a new transaction while an earlier one may still land. */
 async function ensureNothingPending() {
-  if (!loadPending()) return;
-  const r = await resumePending();
-  if (r?.status === "NOT_FOUND")
-    throw new AppError("An earlier transaction is still waiting for the network. Give it a minute, then refresh.", undefined, "network");
+  if (loadPendingList().length === 0) return;
+  const waiting = (await resumePending()).filter((r) => r.status === "NOT_FOUND");
+  if (waiting.length)
+    throw new AppError(
+      `"${waiting[0].pending.label}" is still waiting for the network. Give it a minute, then refresh.`,
+      undefined,
+      "network",
+    );
 }
 
 async function signSendConfirm(tx: Transaction, source: string, label: string, onStep: (s: TxStep) => void): Promise<TxResult> {
@@ -114,18 +155,18 @@ async function signSendConfirm(tx: Transaction, source: string, label: string, o
   savePending({ hash, label, source, at: Date.now() });
   const sent = await server().sendTransaction(signed);
   if (sent.status === "ERROR") {
-    clearPending();
+    clearPending(hash);
     throw explainError(safeJson(sent.errorResult ?? sent));
   }
   onStep("confirming");
   const res = await waitFor(hash);
   if (res.status === "SUCCESS") {
-    clearPending();
+    clearPending(hash);
     const ret = res.returnValue;
     return { hash, value: ret ? scValToNative(ret) : undefined };
   }
   if (res.status === "FAILED") {
-    clearPending();
+    clearPending(hash);
     throw new AppError("The network ran the transaction but it failed, so nothing changed. Refresh and try again.", undefined, "network");
   }
   throw new AppError("Sent, but the network hasn't confirmed it yet. Refresh in a minute to see if it went through.", undefined, "network");
@@ -155,7 +196,11 @@ export type ContractCall = {
 };
 
 /** Run one contract call signed by `source`. Always simulates first. */
-export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
+export function invoke(call: ContractCall, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
+  return runExclusive(call.label, () => invokeNow(call, onStep));
+}
+
+async function invokeNow(call: ContractCall, onStep: (s: TxStep) => void): Promise<TxResult> {
   onStep("checking");
   await ensureNothingPending();
   await assertSigner(call.source);
@@ -183,7 +228,11 @@ export async function invoke(call: ContractCall, onStep: (s: TxStep) => void = (
 }
 
 /** Add a USDC trustline so the wallet can hold test USDC. */
-export async function addUsdcTrustline(source: string, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
+export function addUsdcTrustline(source: string, onStep: (s: TxStep) => void = () => {}): Promise<TxResult> {
+  return runExclusive("Add USDC to wallet", () => addUsdcTrustlineNow(source, onStep));
+}
+
+async function addUsdcTrustlineNow(source: string, onStep: (s: TxStep) => void): Promise<TxResult> {
   onStep("checking");
   await ensureNothingPending();
   await assertSigner(source);

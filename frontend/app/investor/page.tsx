@@ -6,6 +6,7 @@ import { MoneyBlock, MoneyInline, MoneySentence } from "@/components/money";
 import { whenSec } from "@/components/sentence";
 import { ActionButton, Countdown, Empty, ErrorBox, KV, LedgerRows, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { addr, getCredit, u64, type Loan, type Rug } from "@/lib/contract";
+import { heldPayoutLoans } from "@/lib/events";
 import { rugNo, usdcLabel } from "@/lib/money";
 import { investorTotals, lendBlock, loanPhase, LOAN_STATUS_TEXT, monthsText, type Tone } from "@/lib/rules";
 import { invoke } from "@/lib/tx";
@@ -43,6 +44,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
   const holding = data.rugs.filter((r) => r.owner === investor && r.status === "Free");
   const collected = data.rugs.filter((r) => r.owner === investor && r.status === "Redeemed");
   const t = investorTotals(data.loans, investor);
+  const heldLoans = heldPayoutLoans(data.events);
 
   return (
     <>
@@ -83,7 +85,7 @@ function InvestorDesk({ investor, data }: { investor: string; data: Ledger }) {
         ) : (
           <div className="card-list">
             {mine.map((l) => (
-              <MyLoan key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} />
+              <MyLoan key={l.id.toString()} loan={l} rug={rugById.get(l.rug_id)} now={now} win={win} held={heldLoans.has(l.id)} />
             ))}
           </div>
         )}
@@ -222,7 +224,7 @@ function RequestTicket({ loan, rug, investor, data }: { loan: Loan; rug?: Rug; i
   );
 }
 
-function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; win: bigint }) {
+function MyLoan({ loan, rug, now, win, held = false }: { loan: Loan; rug?: Rug; now: bigint; win: bigint; held?: boolean }) {
   const phase = loanPhase(loan, now, win);
   const tone: Tone = phase === "running" ? "secured" : phase === "buyout" || phase === "claimable" ? "late" : "done";
   const text = phase === "running" ? "Running" : phase === "buyout" ? "Overdue" : phase === "claimable" ? "Store missed buy-out" : LOAN_STATUS_TEXT[loan.status];
@@ -280,19 +282,33 @@ function MyLoan({ loan, rug, now, win }: { loan: Loan; rug?: Rug; now: bigint; w
           />
         </>
       )}
-      {loan.status === "Repaid" && (
+      {(loan.status === "Repaid" || loan.status === "BoughtOut") && (
         <p className="small">
-          The weaver repaid. You got back <MoneyInline units={loan.principal + loan.interest} />.
-        </p>
-      )}
-      {loan.status === "BoughtOut" && (
-        <p className="small">
-          The store bought the rug. You got back <MoneyInline units={loan.principal + loan.interest} />.
+          {loan.status === "Repaid" ? "The weaver repaid." : "The store bought the rug."}{" "}
+          {held ? (
+            <>
+              Your wallet couldn't take the <MoneyInline units={loan.principal + loan.interest} />, so the contract is holding it. Withdraw
+              it from the notice at the top of this page.
+            </>
+          ) : (
+            <>
+              You got back <MoneyInline units={loan.principal + loan.interest} />.
+            </>
+          )}
         </p>
       )}
       {loan.status === "Claimed" && (
         <p className="small">
-          You took the rug and <MoneyInline units={loan.interest} /> interest after the store missed its buy-out.
+          {held ? (
+            <>
+              You took the rug after the store missed its buy-out. Your wallet couldn't take the{" "}
+              <MoneyInline units={loan.interest} /> interest, so the contract is holding it for you to withdraw.
+            </>
+          ) : (
+            <>
+              You took the rug and <MoneyInline units={loan.interest} /> interest after the store missed its buy-out.
+            </>
+          )}
         </p>
       )}
     </RugCard>

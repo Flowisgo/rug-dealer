@@ -4,7 +4,7 @@ import { PageHead } from "@/components/shell";
 import { Sentence, when } from "@/components/sentence";
 import { Empty, ErrorBox, Loading, Section } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
-import { describe, type AppEvent } from "@/lib/events";
+import { describe, heldPayoutTxs, type AppEvent } from "@/lib/events";
 import { useLedger } from "@/lib/use-ledger";
 
 const FILTERS: { key: string; label: string; kinds: AppEvent["kind"][] | null }[] = [
@@ -24,6 +24,7 @@ export default function ActivityPage() {
     const kinds = FILTERS.find((f) => f.key === filter)?.kinds;
     return [...data.events].reverse().filter((e) => !kinds || kinds.includes(e.kind));
   }, [data, filter]);
+  const held = useMemo(() => heldPayoutTxs(data?.events ?? []), [data]);
 
   return (
     <>
@@ -55,7 +56,7 @@ export default function ActivityPage() {
             {events.map((e) => (
               <li key={e.id}>
                 <time dateTime={e.at}>{when(e.at)}</time>
-                <Sentence parts={describe(e)} />
+                <Sentence parts={describe(e, held)} />
                 <a className="tx" href={txUrl(e.txHash)} target="_blank" rel="noreferrer" title="Open the transaction on the explorer">
                   tx {e.txHash.slice(0, 8)}
                 </a>

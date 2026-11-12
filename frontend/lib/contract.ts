@@ -12,7 +12,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { ACCOUNTS, CONTRACT_ID, KNOWN_STORES, NETWORK_PASSPHRASE, RPC_URL, USDC_ID } from "./deployment";
-import { explainError } from "./errors";
+import { AppError, explainError } from "./errors";
 import type { Quote } from "./money";
 
 export type RugStatus = "Free" | "Requested" | "Locked" | "Redeemed";
@@ -184,14 +184,20 @@ export async function findStore(address: string): Promise<Store | null> {
 }
 
 /** USDC balance via the token contract. null when the wallet can't hold USDC
- * yet (no trustline) or the account does not exist. */
+ * yet (no trustline) or the account does not exist. Any other failure (the
+ * RPC is down, say) is thrown, so it isn't mistaken for a missing trustline. */
 export async function usdcBalance(address: string): Promise<bigint | null> {
   try {
     return BigInt((await simulateRead(USDC_ID, "balance", [addr(address)])) as bigint);
-  } catch {
-    return null;
+  } catch (e) {
+    if (e instanceof AppError && ((e.source === "usdc" && (e.code === 13 || e.code === 6)) || e.source === "network")) return null;
+    throw e;
   }
 }
+
+/** A balance as screens show it: undefined while reading, null when the
+ * wallet can't hold USDC yet, "unavailable" when it couldn't be read. */
+export type BalanceState = bigint | null | undefined | "unavailable";
 
 /** Run tasks with a small concurrency limit so we don't hammer the RPC. */
 export async function pool<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {

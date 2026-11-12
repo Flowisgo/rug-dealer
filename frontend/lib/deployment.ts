@@ -1,5 +1,7 @@
-// Public testnet deployment data. Mirrors docs/testnet-deployment.json.
-// Nothing secret lives here: only public keys, contract IDs and parameters.
+// Public testnet deployment data. The contract, deploy ledger, test USDC and
+// demo accounts come from lib/deployment.json, which `npm run sync-deployment`
+// generates from docs/testnet-deployment.json. Nothing secret lives here.
+import deployment from "./deployment.json";
 
 export const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 export const RPC_URL = "https://soroban-testnet.stellar.org";
@@ -7,23 +9,23 @@ export const HORIZON_URL = "https://horizon-testnet.stellar.org";
 export const FRIENDBOT_URL = "https://friendbot.stellar.org";
 export const EXPLORER_URL = "https://stellar.expert/explorer/testnet";
 
-export const CONTRACT_ID = "CCX3Z3DJ7KS6YCSWQCIOJWFZCB76A7SD7LJI6BHDILO5FGSI6ZJJ4M2J";
-export const USDC_ID = "CCKKWM4ROXHPJAALYDXWL676MUB6OKGSWAZUOTB5SJIBWQ3B5ZDQZ3OM";
-export const USDC_CODE = "USDC";
-export const USDC_ISSUER = "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY";
+export const CONTRACT_ID: string = deployment.contract;
+export const USDC_ID: string = deployment.usdc;
+export const USDC_CODE: string = deployment.usdcCode;
+export const USDC_ISSUER: string = deployment.usdcIssuer;
 
 /** Ledger that deployed the contract. The event feed starts here (or at the
  * oldest ledger the RPC still keeps, whichever is later). */
-export const DEPLOY_LEDGER = 5698981;
+export const DEPLOY_LEDGER: number = deployment.deployLedger;
 
-export const ACCOUNTS = {
-  admin: "GCXRZRWAXQ2HDXIUAC5BZRZOLMD3RGLU42K64VHWCQV57CGXJWQTVCIZ",
-  issuer: "GAWNPX6FZB7B7TZP6WC2H6L7AOYRXPBRDBWPISSAIFQPZX7GAQO3TWRY",
-  store: "GBWCNPACZXNZKJKB7NA2EHRCZTNWT3LQBEHTYPTVF5X6VZNU5RXPPLCN",
-  store2: "GDWBZD65XOYVVDMQHOST5SEQH4ZBXZTADY3NJIOGMYSYYVGK5RAFZ5RQ",
-  weaver: "GBH4TKU2HPW7PGY5BCDU73E3PMZUK7TQ7RVDHP5QDTK23BHKW2XDGOQF",
-  investor: "GCVBINDMVFUMQ3OBUVQGE6RFBWWBHSRKSLEQVZ6I7XQNQR2424HQOA2W",
-} as const;
+export const ACCOUNTS: {
+  admin: string;
+  issuer: string;
+  store: string;
+  store2: string;
+  weaver: string;
+  investor: string;
+} = deployment.accounts;
 
 /** Stores known from the deployment. More are discovered from events. */
 export const KNOWN_STORES: string[] = [ACCOUNTS.store, ACCOUNTS.store2];
