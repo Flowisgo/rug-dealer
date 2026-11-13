@@ -1366,3 +1366,112 @@ fn emits_store_frozen_event() {
     let events = test.env.events().all().filter_by_contract(&test.contract);
     assert_eq!(events.events(), &[expected]);
 }
+
+#[test]
+#[should_panic(expected = "Error(Contract, #1)")]
+fn constructor_rejects_unrepresentable_default_window() {
+    TestEnv::with_config(1_000 * USDC, 1500, 100, 25, 12, 60, u64::MAX);
+}
+
+#[test]
+fn funding_checks_full_claim_deadline_before_moving_money() {
+    let t = TestEnv::new();
+    let loan = t.request(t.rug_id, 1);
+    t.set_time(u64::MAX - 100); // end fits; end + buy-out window does not.
+    let before = t.balance(&t.investor);
+    assert_eq!(
+        contract_error(t.client().try_fund_loan(&t.investor, &loan)),
+        Error::InvalidAmount
+    );
+    assert_eq!(t.balance(&t.investor), before);
+    assert_eq!(t.balance(&t.contract), 0);
+    assert_eq!(t.client().get_loan(&loan).status, LoanStatus::Requested);
+    assert_eq!(t.client().get_rug(&t.rug_id).status, RugStatus::Requested);
+}
+
+#[test]
+fn registered_stores_are_discoverable_without_rugs_or_event_history() {
+    let t = TestEnv::new();
+    let second = Address::generate(&t.env);
+    assert_eq!(t.client().store_count(), 1);
+    t.client().register_store(&second, &(1_000 * USDC));
+    assert_eq!(t.client().store_count(), 2);
+    assert_eq!(t.client().store_at(&0), t.store);
+    assert_eq!(t.client().store_at(&1), second);
+    t.client().freeze_store(&second);
+    assert_eq!(t.client().store_at(&1), second);
+    assert_eq!(
+        contract_error(t.client().try_register_store(&second, &1)),
+        Error::StoreAlreadyRegistered
+    );
+    assert_eq!(t.client().store_count(), 2);
+    assert_eq!(
+        contract_error(t.client().try_store_at(&2)),
+        Error::StoreNotRegistered
+    );
+}
+
+#[test]
+fn failed_payer_does_not_create_credit_or_unlock_collateral() {
+    let test = TestEnv::new();
+    let loan = test.request_and_fund(test.rug_id, 6);
+    test.set_authorized(&test.investor, false);
+    test.set_authorized(&test.weaver, false);
+    assert!(test.client().try_repay(&loan).is_err());
+    assert_eq!(test.client().get_credit(&test.investor), 0);
+    assert_eq!(test.balance(&test.contract), 45 * USDC);
+    assert_eq!(test.client().get_loan(&loan).status, LoanStatus::Funded);
+    assert_eq!(
+        test.client().get_rug(&test.rug_id).status,
+        RugStatus::Locked
+    );
+    assert_eq!(
+        test.client().get_store(&test.store).open_principal,
+        600 * USDC
+    );
+}
+
+#[test]
+fn credit_accumulates_and_does_not_spend_other_loan_interest() {
+    let test = TestEnv::with_config(3000 * USDC, 1500, 100, 25, 12, 60, 60);
+    let rug_two = test.mint_rug(600 * USDC);
+    let rug_three = test.mint_rug(600 * USDC);
+    let first = test.request_and_fund(test.rug_id, 6);
+    let second = test.request_and_fund(rug_two, 1);
+    let third = test.request_and_fund(rug_three, 1);
+    test.set_authorized(&test.investor, false);
+    test.client().repay(&first);
+    test.client().repay(&second);
+    assert_eq!(test.client().get_credit(&test.investor), 12525 * USDC / 10);
+    assert_eq!(test.balance(&test.contract), 1260 * USDC);
+    assert_eq!(test.client().get_loan(&third).status, LoanStatus::Funded);
+    test.set_authorized(&test.investor, true);
+    assert_eq!(
+        test.client().withdraw_credit(&test.investor),
+        12525 * USDC / 10
+    );
+    assert_eq!(test.client().get_credit(&test.investor), 0);
+    assert_eq!(test.balance(&test.contract), 75 * USDC / 10);
+    test.client().repay(&third);
+    assert_eq!(test.balance(&test.contract), 0);
+    assert_eq!(test.client().get_credit(&test.investor), 0);
+}
+
+#[test]
+fn failed_credit_withdrawal_and_unauthorized_call_are_atomic() {
+    let test = TestEnv::new();
+    let loan = test.request_and_fund(test.rug_id, 6);
+    test.set_authorized(&test.investor, false);
+    test.client().repay(&loan);
+    let investor_before = test.balance(&test.investor);
+    assert!(test.client().try_withdraw_credit(&test.investor).is_err());
+    assert_eq!(test.client().get_credit(&test.investor), 645 * USDC);
+    assert_eq!(test.balance(&test.contract), 645 * USDC);
+    assert_eq!(test.balance(&test.investor), investor_before);
+    test.set_authorized(&test.investor, true);
+    test.env.set_auths(&[]);
+    assert!(test.client().try_withdraw_credit(&test.investor).is_err());
+    assert_eq!(test.client().get_credit(&test.investor), 645 * USDC);
+    assert_eq!(test.balance(&test.contract), 645 * USDC);
+    assert_eq!(test.balance(&test.investor), investor_before);
+}

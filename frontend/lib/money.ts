@@ -1,6 +1,8 @@
 // USDC amounts are bigint base units with 7 decimals, exactly as the contract
 // stores them. Never use floating point for money.
 
+export const AMOUNT_GUIDANCE = "Use a dot for decimals (6.50); optional commas group thousands (1,250.25). Up to 7 decimal places.";
+
 export const DECIMALS = 7;
 export const UNIT = 10_000_000n;
 

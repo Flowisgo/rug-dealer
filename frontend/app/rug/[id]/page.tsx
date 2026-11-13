@@ -1,4 +1,6 @@
 "use client";
+import { LoanPayout } from "@/components/payout";
+import { eventsForRug } from "@/lib/payouts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -7,7 +9,7 @@ import { Sentence, when, whenSec } from "@/components/sentence";
 import { MoneyBlock } from "@/components/money";
 import { Empty, ErrorBox, KV, Loading, Party, RugCard, Section, Tag } from "@/components/ui";
 import { txUrl } from "@/lib/deployment";
-import { describe, heldPayoutTxs, rugIdOf, type AppEvent } from "@/lib/events";
+import { describe, heldPayoutTxs, type AppEvent } from "@/lib/events";
 import { RUG_PATTERN_NOTE } from "@/lib/kilim";
 import { rugNo } from "@/lib/money";
 import { latestLoanFor, loanPhase, LOAN_STATUS_TEXT, monthsText, openLoanFor, rugLabel, type Tone } from "@/lib/rules";
@@ -54,21 +56,8 @@ export default function RugPage() {
   const last = latestLoanFor(id, data.loans);
   const phase = open ? loanPhase(open, now, win) : null;
 
-  // Events for this rug, plus the store freeze that a claim on it caused and
-  // any payout the contract had to hold when one of its loans closed.
-  const claimTx = new Set(data.events.filter((e) => e.kind === "rug_claimed" && e.rugId === id).map((e) => e.txHash));
-  const loanIds = new Set(loans.map((l) => l.id));
+  const events = eventsForRug(id, data.loans, data.events);
   const held = heldPayoutTxs(data.events);
-  const after = (e: AppEvent) => Number(e.kind === "store_frozen" || e.kind === "investor_credited");
-  const events = data.events
-    .filter(
-      (e) =>
-        rugIdOf(e) === id ||
-        (e.kind === "store_frozen" && claimTx.has(e.txHash)) ||
-        (e.kind === "investor_credited" && loanIds.has(e.loanId)),
-    )
-    // Consequences in the same transaction (freeze, held payout) come after the settlement.
-    .sort((a, b) => a.ledger - b.ledger || after(a) - after(b));
 
   let tag: { text: string; tone: Tone } = rugLabel(rug);
   if (phase === "buyout" || phase === "claimable") tag = { text: "Overdue", tone: "late" };
@@ -111,6 +100,7 @@ export default function RugPage() {
         </RugCard>
       </div>
 
+      {loans.map((loan) => <LoanPayout key={loan.id.toString()} loan={loan} data={data} />)}
       <Section label="Timeline" count={events.length}>
         {data.eventsTrimmed && (
           <p className="notice small" style={{ marginBottom: 16 }}>
@@ -141,7 +131,7 @@ export default function RugPage() {
               <>
                 <li>
                   <time>{whenSec(open.end_at)}</time>
-                  {phase === "running" ? "Due. The weaver repays by then to take the rug back." : "Was due. The weaver can still repay until the store buys the rug."}
+                  {phase === "running" ? "Due. The weaver repays by then to take the rug back." : "Was due. The weaver can still repay until the store buys the rug or the investor claims it."}
                 </li>
                 <li>
                   <time>{whenSec(open.end_at + win)}</time>

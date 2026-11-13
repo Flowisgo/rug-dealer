@@ -2,7 +2,19 @@
 // One shared snapshot of the contract for every screen: config, rugs, loans,
 // stores and events. Cached for a few seconds and refreshed after each action.
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { getConfig, listLoans, listRugs, listStores, usdcBalance, type BalanceState, type Config, type Loan, type Rug, type Store } from "./contract";
+import {
+  server,
+  getConfig,
+  listLoans,
+  listRugs,
+  listStores,
+  usdcBalance,
+  type BalanceState,
+  type Config,
+  type Loan,
+  type Rug,
+  type Store,
+} from "./contract";
 import { fetchEvents, type AppEvent } from "./events";
 import { messageOf } from "./errors";
 import { forgetHandedOver } from "./handover";
@@ -23,6 +35,7 @@ type State = { data: Ledger | null; error: string | null; loading: boolean };
 
 let state: State = { data: null, error: null, loading: false };
 let inflight: Promise<void> | null = null;
+const requestedStores = new Set<string>();
 const listeners = new Set<() => void>();
 const set = (s: Partial<State>) => {
   state = { ...state, ...s };
@@ -38,7 +51,11 @@ async function load(): Promise<void> {
       listLoans(),
       fetchEvents().then(
         (r) => ({ ...r, error: null as string | null }),
-        (e) => ({ events: [] as AppEvent[], trimmed: false, error: messageOf(e) }),
+        (e) => ({
+          events: [] as AppEvent[],
+          trimmed: false,
+          error: messageOf(e),
+        }),
       ),
     ]);
     // A rug that has been handed over needs no saved hand-over code any more.
@@ -47,11 +64,12 @@ async function load(): Promise<void> {
     const frozenReason: Ledger["frozenReason"] = {};
     for (const e of ev.events) {
       if (e.kind === "store_registered") seen.add(e.store);
-      if (e.kind === "store_frozen" && !frozenReason[e.store]) frozenReason[e.store] = e.reason;
+      if (e.kind === "store_frozen" && !frozenReason[e.store])
+        frozenReason[e.store] = e.reason;
     }
     rugs.forEach((r) => seen.add(r.store));
     loans.forEach((l) => seen.add(l.store));
-    const stores = await listStores([...seen]);
+    const stores = await listStores([...seen, ...requestedStores]);
     set({
       data: {
         config,
@@ -87,10 +105,20 @@ const serverSnapshot = (): State => SERVER_STATE;
 
 /** The shared contract snapshot. Reloads when stale (older than 20 s) and
  * every 20 s while the tab is visible. */
-export function useLedger() {
+export function useLedger(storeAddress: string | null = null) {
+  useEffect(() => {
+    if (storeAddress && !requestedStores.has(storeAddress)) {
+      requestedStores.add(storeAddress);
+      void refreshLedger().then(() => {
+        if (!state.data?.stores.some((s) => s.address === storeAddress))
+          void refreshLedger();
+      });
+    }
+  }, [storeAddress]);
   const s = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
   useEffect(() => {
-    if (!state.data || Date.now() - state.data.loadedAt > 20_000) void refreshLedger();
+    if (!state.data || Date.now() - state.data.loadedAt > 20_000)
+      void refreshLedger();
     const t = setInterval(() => {
       if (document.visibilityState === "visible") void refreshLedger();
     }, 20_000);
@@ -100,14 +128,55 @@ export function useLedger() {
   return { ...s, refresh };
 }
 
-/** Current unix time in seconds, ticking every second. */
-export function useNow(): bigint {
-  const [now, setNow] = useState(() => BigInt(Math.floor(Date.now() / 1000)));
-  useEffect(() => {
-    const t = setInterval(() => setNow(BigInt(Math.floor(Date.now() / 1000))), 1000);
-    return () => clearInterval(t);
-  }, []);
-  return now;
+// A shared clock sampled from closed ledgers. Never extrapolate from the
+// browser clock: a fast laptop must not enable a premature claim.
+let closedAt: bigint | null = null;
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+let clockRequest: Promise<void> | null = null;
+const clockListeners = new Set<() => void>();
+async function readClock() {
+  try {
+    const latest = await server().getLatestLedger();
+    const page = await server().getLedgers({
+      startLedger: latest.sequence,
+      pagination: { limit: 1 },
+    });
+    closedAt = BigInt(page.ledgers[0].ledgerCloseTime);
+  } catch {
+    closedAt = null;
+  }
+  clockListeners.forEach((l) => l());
+}
+function updateClock() {
+  if (!clockRequest)
+    clockRequest = readClock().finally(() => {
+      clockRequest = null;
+    });
+  return clockRequest;
+}
+const subscribeClock = (listener: () => void) => {
+  clockListeners.add(listener);
+  if (!clockTimer) {
+    void updateClock();
+    clockTimer = setInterval(updateClock, 5000);
+  }
+  return () => {
+    clockListeners.delete(listener);
+    if (!clockListeners.size && clockTimer) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+      closedAt = null;
+    }
+  };
+};
+/** Last confirmed ledger timestamp, or null while unavailable. Signing still
+ * simulates against the current ledger before opening the wallet. */
+export function useNow(): bigint | null {
+  return useSyncExternalStore(
+    subscribeClock,
+    () => closedAt,
+    () => null,
+  );
 }
 
 /** Any account's USDC balance (public data): undefined while loading, null

@@ -132,7 +132,7 @@ function pastLabel(rug: Rug, last: Loan | null, weaver: string): { text: string;
   return { text: "Passed to a new holder", tone: "done", detail: "This rug's certificate is with someone else now." };
 }
 
-function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; data: Ledger; now: bigint; win: bigint }) {
+function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; data: Ledger; now: bigint | null; win: bigint }) {
   const loan = openLoanFor(rug.id, data.loans);
   const store = data.stores.find((s) => s.address === rug.store);
   const phase = loan ? loanPhase(loan, now, win) : null;
@@ -192,7 +192,7 @@ function WeaverRug({ rug, weaver, data, now, win }: { rug: Rug; weaver: string; 
         <>
           {late ? (
             <p className="notice warn">
-              <strong>Late: you can still repay until the store buys the rug.</strong>{" "}
+              <strong>Late: you can still repay until the store buys the rug or the investor claims it.</strong>{" "}
               {phase === "buyout" ? (
                 <>
                   The store's buy-out window closes in <Countdown to={loan.end_at! + win} />.

@@ -26,6 +26,7 @@ export const ACCOUNTS: {
   weaver: string;
   investor: string;
 } = deployment.accounts;
+export const HAS_STORE_INDEX = deployment.storeIndex;
 
 /** Stores known from the deployment. More are discovered from events. */
 export const KNOWN_STORES: string[] = [ACCOUNTS.store, ACCOUNTS.store2];

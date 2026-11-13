@@ -3,15 +3,17 @@
 import type { Loan, Rug, Store } from "./contract";
 
 export type Phase =
+  | "checking" // closed-ledger time unavailable: no timed action is enabled
   | "requested" // waiting for an investor
   | "running" // funded, before end_at
   | "buyout" // end_at <= now < end_at + window: store may buy, weaver may still repay
   | "claimable" // now >= end_at + window: investor may take the rug, weaver may still repay
   | "closed";
 
-export function loanPhase(loan: Loan, nowSec: bigint, windowSec: bigint): Phase {
+export function loanPhase(loan: Loan, nowSec: bigint | null, windowSec: bigint): Phase {
   if (loan.status === "Requested") return "requested";
   if (loan.status !== "Funded" || loan.end_at === null) return "closed";
+  if (nowSec === null) return "checking";
   if (nowSec < loan.end_at) return "running";
   if (nowSec < loan.end_at + windowSec) return "buyout";
   return "claimable";

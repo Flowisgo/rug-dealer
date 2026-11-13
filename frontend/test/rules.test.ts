@@ -143,12 +143,13 @@ describe("contract errors", () => {
     expect(e.message).toBe("There isn't enough test USDC in the paying wallet.");
   });
   it("never reads a token failure as 'There is no rug with that number'", () => {
-    const e = explainError(`HostError: Error(Contract, #10) "balance is not sufficient to spend"`);
+    const e = explainError(`HostError: Error(Contract, #10) "balance is not sufficient to spend"`, [], USDC_ID);
     expect(e.source).toBe("usdc");
     expect(e.message).not.toMatch(/no rug/);
   });
-  it("still reads a bare code as RugDealer's when nothing points at the token", () => {
-    expect(explainError("HostError: Error(Contract, #10)").message).toBe("There is no rug with that number.");
+  it("does not attribute an unidentified nested code to RugDealer", () => {
+    expect(explainError("HostError: Error(Contract, #10)").source).not.toBe("rugdealer");
+    expect(explainError("HostError: Error(Contract, #10)", [], CONTRACT_ID).message).toBe("There is no rug with that number.");
   });
   it("attributes each code to the contract named before it", () => {
     const raw = `x contract:${CONTRACT_ID} ... Error(Contract, #13) ... contract:${USDC_ID} ... Error(Contract, #10)`;

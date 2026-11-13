@@ -94,7 +94,7 @@ Do the flows in this order. Each step names the account Freighter must have sele
 **B. Late repayment inside the buy-out window**
 
 1. Issue and borrow for **1** month (60 s), then fund as above.
-2. Wait for the due countdown to end. *rd-weaver* sees "Late: you can still repay until the store buys the rug" with the window countdown. *rd-store* sees the loan under Overdue loans with "Buy-out window closes in".
+2. Wait for the due countdown to end. *rd-weaver* sees "Late: you can still repay until the store buys the rug or the investor claims it" with the window countdown. *rd-store* sees the loan under Overdue loans with "Buy-out window closes in".
 3. *rd-weaver* repays inside the window. It should succeed (agreed decision 8).
 
 **C. Store buy-out**
@@ -105,16 +105,16 @@ Do the flows in this order. Each step names the account Freighter must have sele
 
 **D. Missed buy-out and claim**
 
-Warning: this freezes the store for good. `rd-store2` is already frozen and can't issue a new rug, so do flow E first: approve a fresh store, import it into Freighter, and use it here. Don't use Kaya Rug House unless you're happy to lose it for the demo.
+Use a disposable deployment and a **fresh, active claim store**. Do not run flow E's freeze step on this store. Fund it with test XLM, add `USDC:<usdc_issuer from the selected deployment manifest>`, and approve it as admin. Verify `get_store.frozen = false` and enough unused limit before issuing the rug. The shared deployment's `rd-store2` is already frozen; leave shared state read-only. Claim, at step 2 below, is the step that freezes the claim store.
 1. With a non-frozen store: issue, borrow 1 month, fund, then let both windows pass (120 s+).
 2. *rd-investor* → Your loans → "Store missed buy-out" → **Take the rug** → confirm → sign. Expect the rug in "Rugs you hold", the store frozen in `/platform` as "Frozen: missed buy-out", and the store's desk showing the madder banner.
 3. *rd-investor* → **Collect the rug** → link → the store co-signs (as in A6–A7). This should work even though the store is frozen.
 
 **E. Platform**
 
-1. *rd-admin* → `/platform` → Approve a store: paste a fresh testnet account (fund it with Friendbot first), limit `1000`. It appears under Stores.
+1. *rd-admin* → `/platform` → Approve a store: paste a separate fresh testnet account for the admin-freeze test (test XLM from Friendbot and a trustline to the manifest's exact USDC issuer first), limit `1000`. It appears under Stores.
 2. **Change limit** on Kaya Rug House to `500`, then try to borrow 600 on one of its rugs as the weaver. The borrow form should warn that the store can't take the loan, and the button stays disabled. Set it back to `5000`.
-3. **Freeze this store** on the fresh store → the confirm dialog → sign. Its tag reads "Frozen by the platform". Its store desk can't issue certificates.
+3. **Freeze this store** on the separate admin-test store (never the active claim store) → the confirm dialog → sign. Its tag reads "Frozen by the platform". Its store desk can't issue certificates.
 
 **F. Wallet edge cases**
 
@@ -127,7 +127,7 @@ Warning: this freezes the store for good. `rd-store2` is already frozen and can'
 ## Open questions
 
 1. **Public URL.** Milestone 4 says "deployed to a public URL". I didn't deploy anything (no push, nothing outward). The app is fully client-side; `/rug/[id]` is the only dynamic route. Vercel with root `frontend/` should work as is. Which host do you want?
-2. **Event history is ~7 days.** The testnet RPC keeps about 7 days of events, so `/activity`, timelines and the discovery of stores that aren't in the deployment file fade after a week. The app says so when it happens. See `docs/frontend-contract-requests.md` for an optional `list_stores` view. Otherwise, redeploy before the demo.
+2. **Event history is ~7 days.** The testnet RPC keeps about 7 days of events, so `/activity`, timelines and the discovery of stores that aren't in the deployment file fade after a week. The app discloses missing history. Fresh contracts now expose `store_count`/`store_at`; the connected store is also queried directly. Older contracts offer an admin address lookup.
 3. **Demo names.** I named the demo accounts Kaya Rug House (store), Bazaar Corner Rugs (store2), Ayşe the weaver, Deniz the investor, and RugDealer platform, all in `lib/deployment.ts`. Change them if you prefer others.
 4. **Look-around mode** (`?as=`) wasn't in the plan. Keep it or remove it?
 5. `.claude/launch.json` at the repo root (dev-server config for the desktop app's browser) is left untracked on purpose.

@@ -101,3 +101,9 @@ describe("formatting", () => {
     expect(rugNo(12345)).toBe("No. 12345");
   });
 });
+
+it("rejects ambiguous decimal commas and malformed thousands groups", () => {
+  for (const input of ["6,50", "65,0", "1,,250", ",650", "1,250,25", "12,34.50"]) expect(parseUsdc(input)).toBeNull();
+  expect(parseUsdc("6.50")).toBe(65000000n);
+  expect(parseUsdc("1,250.25")).toBe(12502500000n);
+});

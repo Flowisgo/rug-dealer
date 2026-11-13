@@ -19,11 +19,11 @@ A weaver often needs cash the day a rug comes off the loom. A real buyer may pay
 2. **An investor lends that price.** The weaver asks to borrow exactly the certificate's price for 1 to 12 months. An investor funds the whole loan in USDC. Interest and fees come off the top, once, and the weaver receives the rest straight away.
 3. **Repay, or the store buys the rug.**
    - **Weaver repays.** The weaver pays back the loan amount, collects the rug and can sell it to a real buyer whenever one turns up.
-   - **Weaver doesn't repay.** The store must buy the rug at the same price within 7 days of the end date, and the investor is paid from that.
-   - **Weaver repays late.** Until the store's payment lands, the weaver can still repay.
+   - **Weaver doesn't repay.** The store must buy the rug at the same price within its buy-out window (60 seconds in this demo; 7 days planned), and the investor is paid from that.
+   - **Weaver repays late.** Until a store buy-out or investor claim confirms, the weaver can still repay.
    - **The store misses its buy-out too.** The store is frozen, and the investor takes the rug and the interest instead of the loan amount.
 
-When the weaver repays or the store buys, the investor gets the loan amount plus interest. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
+When the weaver repays or the store buys, the investor receives the loan amount plus interest, or an equal backed credit if wallet delivery fails. The rule keeps the price honest. The store won't overprice, because it may have to pay that price. It won't underprice much either, because the weaver can take the rug to another store. That only works when the store and the weaver are different people, so the contract refuses a store as a borrower and refuses anyone as investor on a loan they're part of.
 
 ### Worked example
 
@@ -59,7 +59,7 @@ A real buyer would pay about $1,500 for the rug. The store's buying price is $60
 - **One Soroban contract** ([`contracts/rugdealer`](contracts/rugdealer)) does the following:
   - records stores, rug certificates and loans
   - moves test USDC
-  - enforces the settlement windows: store buy-out on `[end, end + 7 days)`, investor claim from `end + 7 days`
+  - enforces the settlement windows: store buy-out on `[end, end + window)`, investor claim from `end + window`
   - always lets a loan close: if the investor's wallet can't take a payout, the contract holds it for them to withdraw later
   - emits an event for every action
 - **Rug certificates** are records inside the contract, each with an id, store, description, price, owner and status. There is no separate Stellar asset or trustline per rug.
@@ -145,7 +145,7 @@ npm run dev
 Open `http://localhost:3000`. The app is all client-side and talks straight to the public testnet RPC, so it needs no environment variables.
 
 ```bash
-npm test           # unit tests: money maths, event sentences, loan rules, hand-over codes
+npm test           # local tests, including mounted wallet/custody/recovery flows
 npm run smoke      # read-only checks against the live testnet contract
 npm run typecheck
 npm run build
@@ -168,17 +168,9 @@ cd frontend
 npx vercel deploy --prod
 ```
 
-To deploy from GitHub instead, import the repository on Vercel and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed.
+To deploy from GitHub instead, import the repository on Vercel and set **Root Directory** to `frontend`. Next.js is detected automatically, and no environment variables are needed. After a contract redeploy, use the new public deployment manifest and rebuild the web app. `npm run dev`, `test`, `smoke`, `typecheck` and `build` generate the web configuration from `docs/testnet-deployment.json` (or the absolute path in `RUGDEALER_MANIFEST`). The explicit `npm run sync-deployment` command remains available. Do not edit generated `frontend/lib/deployment.json`; commit it alongside the selected public manifest when publishing a new default deployment.
 
-After a contract redeploy (`python scripts/testnet.py deploy`), point the app at it before deploying the app again:
-
-```bash
-cd frontend
-npm run sync-deployment
-npm run smoke
-```
-
-`sync-deployment` copies everything the app needs from `docs/testnet-deployment.json` into `frontend/lib/deployment.json`: the contract, its deploy ledger, the test USDC contract and issuer, and every demo account. A fresh deploy on a new machine creates new accounts and a new test USDC, so all of these can change, not just the contract. `smoke` then checks the app against the live contract, read-only. Commit `lib/deployment.json` with the rest.
+The manifest must include **contract ID, deployment ledger, USDC SAC ID, asset code and issuer, and all six demo accounts** (admin/fee recipient, issuer, store, store2, weaver, investor). The generator checks the issuer/SAC relationship. The app uses Stellar Testnet's passphrase, RPC, Horizon, Friendbot and explorer URLs in `frontend/lib/deployment.ts`. A different contract needs a matching manifest at build time; changing only the contract ID is insufficient. See [fresh deployment setup](docs/testnet-demo.md#isolated-rehearsal-and-web-configuration).
 
 ## Repository layout
 

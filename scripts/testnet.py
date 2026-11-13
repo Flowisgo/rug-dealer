@@ -39,8 +39,8 @@ DEFAULT_STATE = Path.home() / ".rugdealer-demo"
 STATE = Path(os.environ.get("RUGDEALER_STATE", DEFAULT_STATE)).expanduser().resolve()
 CONFIG = STATE / "config"
 LOGS = STATE / "logs"
-MANIFEST = ROOT / "docs" / "testnet-deployment.json"
-RESULTS = ROOT / "docs" / "testnet-demo-results.json"
+MANIFEST = Path(os.environ.get("RUGDEALER_MANIFEST", ROOT / "docs" / "testnet-deployment.json")).expanduser().resolve()
+RESULTS = Path(os.environ.get("RUGDEALER_RESULTS", ROOT / "docs" / "testnet-demo-results.json")).expanduser().resolve()
 HORIZON = "https://horizon-testnet.stellar.org"
 FRIENDBOT = "https://friendbot.stellar.org"
 CLI = os.environ.get("STELLAR_CLI", "stellar")
@@ -472,6 +472,7 @@ def deploy(args: argparse.Namespace) -> None:
             "store_limit": store_limit,
             "rug_price": rug_price,
         },
+        "features": {"store_index": True},
         "wasm_sha256": hashlib.sha256(wasm.read_bytes()).hexdigest(),
         "transactions": TX_LOG.copy(),
     }
@@ -489,13 +490,52 @@ def deploy(args: argparse.Namespace) -> None:
     print("\nNext: python scripts/testnet.py demo --scenario all")
 
 
+def ledger_time() -> int:
+    records = http_json(f"{HORIZON}/ledgers?order=desc&limit=1")["_embedded"]["records"]
+    return int(datetime.fromisoformat(records[0]["closed_at"].replace("Z", "+00:00")).timestamp())
+
+
 def wait_until(timestamp: int, label: str) -> None:
+    # Eligibility uses a closed ledger, never the operator's computer clock.
+    started = time.monotonic()
     while True:
-        remaining = timestamp - int(time.time())
+        remaining = timestamp - ledger_time()
         if remaining <= 0:
             return
-        print(f"  waiting {remaining:>3}s for {label}...", flush=True)
+        if time.monotonic() - started > 900:
+            raise RuntimeError(f"timed out waiting for {label}; check Testnet and resume manually")
+        print(f"  waiting {remaining:>3}s of ledger time for {label}...", flush=True)
         time.sleep(min(5, remaining))
+
+
+def preflight_scenarios(manifest: dict[str, Any], scenarios: list[str]) -> None:
+    # Check the entire selection before creating the first rug.
+    for role in dict.fromkeys("store2" if n == "claim" else "store" for n in scenarios):
+        store = view(manifest["contract"], "get_store", ["--store", manifest["accounts"][role]])
+        if store["frozen"]:
+            raise RuntimeError(f"{role} is frozen in this deployment; redeploy before running the selected scenarios")
+        if int(store["open_principal"]) + int(manifest["params"]["rug_price"]) > int(store["limit"]):
+            raise RuntimeError(f"{role} does not have capacity for the demo rug")
+    for role in ROLES:
+        address = last_line(run_cli(f"check-{role}", ["keys", "address", ALIASES[role]]).stdout)
+        if address != manifest["accounts"][role]:
+            raise RuntimeError(f"{role} identity does not match the selected manifest; check RUGDEALER_STATE")
+
+
+def timed_preflight(contract: str, method: str, loan_id: int, source: str, opens: int, closes: int | None = None) -> None:
+    wait_until(opens, method)
+    for attempt in range(3):
+        if closes is not None and ledger_time() >= closes:
+            raise RuntimeError("buy-out window closed; do not retry buy-out. Use the documented claim path")
+        try:
+            view(contract, method, ["--loan_id", str(loan_id)], source=source)
+            return
+        except RuntimeError as exc:
+            # Retry only unsigned TooEarly/BuyoutWindowOpen simulations; never
+            # blindly resubmit a signed transaction with an unknown outcome.
+            if not re.search(r"Error\(Contract, #(18|20)\)", str(exc)) or attempt == 2:
+                raise
+            time.sleep(5)
 
 
 def quote_for(params: dict[str, Any], principal: int, months: int) -> dict[str, int]:
@@ -602,7 +642,7 @@ def run_scenario(manifest: dict[str, Any], name: str) -> dict[str, Any]:
         )
     elif name == "buyout":
         loan = view(contract, "get_loan", ["--loan_id", str(loan_id)])
-        wait_until(int(loan["end_at"]) + 2, "buy-out window")
+        timed_preflight(contract, "store_buyout", loan_id, store_source, int(loan["end_at"]), int(loan["end_at"]) + int(params["buyout_window_seconds"]))
         send(
             contract,
             store_source,
@@ -613,7 +653,7 @@ def run_scenario(manifest: dict[str, Any], name: str) -> dict[str, Any]:
     elif name == "claim":
         loan = view(contract, "get_loan", ["--loan_id", str(loan_id)])
         window = int(params["buyout_window_seconds"])
-        wait_until(int(loan["end_at"]) + window + 2, "claim window")
+        timed_preflight(contract, "claim_rug", loan_id, ALIASES["investor"], int(loan["end_at"]) + window)
         send(
             contract,
             ALIASES["investor"],
@@ -716,6 +756,10 @@ def demo(args: argparse.Namespace) -> None:
                 f"config mismatch for {key}: {config[key]} != {expected_params[key]}"
             )
 
+    for field, expected in (("admin", manifest["accounts"]["admin"]), ("fee_recipient", manifest["accounts"]["admin"]), ("usdc", manifest["usdc"])):
+        if config[field] != expected:
+            raise RuntimeError(f"config mismatch for {field}; check the selected manifest")
+    preflight_scenarios(manifest, scenarios)
     results = []
     for name in scenarios:
         results.append(run_scenario(manifest, name))

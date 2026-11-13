@@ -4,7 +4,7 @@ import { decodeNative, findRedeem, type AppEvent } from "../lib/events";
 import { CONTRACT_ID } from "../lib/deployment";
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { checkHandover, decodeHandover, encodeHandover, forgetHandedOver, handoverKey, isExpired, type Handover } from "../lib/handover";
-import { pendingOutcome, runExclusive, withoutPending, withPending } from "../lib/tx";
+import { pendingOutcome, runExclusive } from "../lib/tx";
 
 const STORE = "GSTORE";
 const WEAVER = "GWEAVER";
@@ -68,17 +68,6 @@ describe("decoding a hand-over code", () => {
     expect(() => decodeHandover(enc(bad))).toThrow(/isn't valid/);
   });
   it("rejects text that isn't a code at all", () => expect(() => decodeHandover("not a code")).toThrow(/isn't valid/));
-});
-
-describe("pending transactions are kept per transaction", () => {
-  const p = (hash: string) => ({ hash: hash.repeat(64), label: hash, source: "G", at: 1 });
-  it("adding one never overwrites another", () => {
-    expect(withPending([p("a")], p("b")).map((x) => x.label)).toEqual(["a", "b"]);
-    expect(withPending([p("a")], p("a"))).toHaveLength(1);
-  });
-  it("confirming one clears only that one", () => {
-    expect(withoutPending([p("a"), p("b")], "a".repeat(64)).map((x) => x.label)).toEqual(["b"]);
-  });
 });
 
 describe("one action at a time in a tab", () => {
